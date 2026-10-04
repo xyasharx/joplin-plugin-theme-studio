@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "All-in-one multi-palette engine with native RTL/LTR typography for Joplin",
   "main": "dist/index.js",
+  "files": [
+    "publish"
+  ],
   "scripts": {
     "dist": "webpack --joplin-plugin-config buildMain && webpack --joplin-plugin-config buildExtraScripts && webpack --joplin-plugin-config createArchive",
     "build": "webpack --joplin-plugin-config buildMain && webpack --joplin-plugin-config buildExtraScripts"
@@ -10,14 +13,22 @@
   "keywords": [
     "joplin-plugin",
     "theme",
+    "dark-theme",
+    "light-theme",
+    "palette",
     "rtl",
+    "ltr",
     "vazirmatn",
+    "persian",
+    "arabic",
     "tokyo-night",
     "everforest",
     "catppuccin",
     "nord",
     "dracula",
-    "gruvbox"
+    "gruvbox",
+    "atom-one",
+    "mermaid"
   ],
   "author": "Your Name",
   "license": "MIT",
