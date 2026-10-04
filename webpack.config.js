@@ -21,8 +21,18 @@ function getPluginConfig() {
 }
 
 module.exports = (env, argv) => {
-  const joplinConfigIndex = process.argv.indexOf('--joplin-plugin-config');
-  const command = joplinConfigIndex !== -1 ? process.argv[joplinConfigIndex + 1] : 'buildMain';
+  // Extract command from Webpack's --env parameter
+  let command = 'buildMain';
+
+  if (env && (env['joplin-plugin-config'] || env.joplinPluginConfig)) {
+    command = env['joplin-plugin-config'] || env.joplinPluginConfig;
+  } else {
+    // Fallback for direct node/legacy CLI calls
+    const joplinConfigIndex = process.argv.indexOf('--joplin-plugin-config');
+    if (joplinConfigIndex !== -1 && process.argv[joplinConfigIndex + 1]) {
+      command = process.argv[joplinConfigIndex + 1];
+    }
+  }
 
   // 1. Build Main Entry Point (src/index.ts)
   if (command === 'buildMain') {
@@ -60,7 +70,7 @@ module.exports = (env, argv) => {
     };
   }
 
-  // 2. Build Extra Scripts (src/markdownTheme.ts)
+  // 2. Build Extra Content Scripts (src/markdownTheme.ts)
   if (command === 'buildExtraScripts') {
     const config = getPluginConfig();
     const extraScripts = config.extraScripts || [];
@@ -92,8 +102,15 @@ module.exports = (env, argv) => {
     };
   }
 
-  // 3. Create Archive (.jpl) & Joplin Registry Metadata (.json)
+  // 3. Create Archive (.jpl) & Official Hash Metadata (.json)
   if (command === 'createArchive') {
+    fs.ensureDirSync(publishDir);
+
+    if (!fs.existsSync(distDir) || fs.readdirSync(distDir).length === 0) {
+      console.error('Error: dist folder is empty. Run buildMain first.');
+      process.exit(1);
+    }
+
     const manifest = getManifest();
     const jplPath = path.resolve(publishDir, `${manifest.id}.jpl`);
 
@@ -109,7 +126,7 @@ module.exports = (env, argv) => {
       fs.readdirSync(distDir)
     );
 
-    // Compute SHA-256 hash required by Joplin's official plugin crawler
+    // Compute SHA-256 hash required by Joplin's official plugin registry crawler
     const fileBuffer = fs.readFileSync(jplPath);
     const hash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
 
@@ -125,8 +142,8 @@ module.exports = (env, argv) => {
     );
 
     console.log(`\n Successfully generated:`);
-    console.log(` - JPL Bundle: ${jplPath}`);
-    console.log(` - Hash Meta:  ${path.resolve(publishDir, `${manifest.id}.json`)}\n`);
+    console.log(` - JPL Archive: ${jplPath}`);
+    console.log(` - Metadata:    ${path.resolve(publishDir, `${manifest.id}.json`)}\n`);
     process.exit(0);
   }
 };
