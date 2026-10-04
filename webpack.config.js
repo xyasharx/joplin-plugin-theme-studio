@@ -1,4 +1,5 @@
 const path = require('path');
+const crypto = require('crypto');
 const fs = require('fs-extra');
 const CopyPlugin = require('copy-webpack-plugin');
 const tar = require('tar');
@@ -14,13 +15,16 @@ function getManifest() {
 
 function getPluginConfig() {
   const configPath = path.resolve(__dirname, 'plugin.config.json');
-  return fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, 'utf8')) : { extraScripts: [] };
+  return fs.existsSync(configPath)
+    ? JSON.parse(fs.readFileSync(configPath, 'utf8'))
+    : { extraScripts: [] };
 }
 
 module.exports = (env, argv) => {
   const joplinConfigIndex = process.argv.indexOf('--joplin-plugin-config');
   const command = joplinConfigIndex !== -1 ? process.argv[joplinConfigIndex + 1] : 'buildMain';
 
+  // 1. Build Main Entry Point (src/index.ts)
   if (command === 'buildMain') {
     fs.emptyDirSync(distDir);
     fs.emptyDirSync(publishDir);
@@ -43,12 +47,20 @@ module.exports = (env, argv) => {
       },
       plugins: [
         new CopyPlugin({
-          patterns: [{ from: '**/*', to: distDir, context: srcDir, globOptions: { ignore: ['**/*.ts', '**/*.tsx'] } }],
+          patterns: [
+            {
+              from: '**/*',
+              to: distDir,
+              context: srcDir,
+              globOptions: { ignore: ['**/*.ts', '**/*.tsx'] },
+            },
+          ],
         }),
       ],
     };
   }
 
+  // 2. Build Extra Scripts (src/markdownTheme.ts)
   if (command === 'buildExtraScripts') {
     const config = getPluginConfig();
     const extraScripts = config.extraScripts || [];
@@ -80,10 +92,12 @@ module.exports = (env, argv) => {
     };
   }
 
+  // 3. Create Archive (.jpl) & Joplin Registry Metadata (.json)
   if (command === 'createArchive') {
     const manifest = getManifest();
     const jplPath = path.resolve(publishDir, `${manifest.id}.jpl`);
 
+    // Pack compiled files into .jpl archive
     tar.create(
       {
         strict: true,
@@ -95,7 +109,24 @@ module.exports = (env, argv) => {
       fs.readdirSync(distDir)
     );
 
-    console.log(`\n Bundle successfully generated at: ${jplPath}\n`);
+    // Compute SHA-256 hash required by Joplin's official plugin crawler
+    const fileBuffer = fs.readFileSync(jplPath);
+    const hash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+
+    const pluginInfo = {
+      ...manifest,
+      _publish_hash: `sha256:${hash}`,
+      _publish_commit: process.env.GITHUB_SHA || 'main',
+    };
+
+    fs.writeFileSync(
+      path.resolve(publishDir, `${manifest.id}.json`),
+      JSON.stringify(pluginInfo, null, 2)
+    );
+
+    console.log(`\n Successfully generated:`);
+    console.log(` - JPL Bundle: ${jplPath}`);
+    console.log(` - Hash Meta:  ${path.resolve(publishDir, `${manifest.id}.json`)}\n`);
     process.exit(0);
   }
 };
