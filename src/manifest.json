@@ -5,7 +5,7 @@
   "name": "Theme Studio",
   "version": "1.0.1",
   "description": "All-in-one multi-palette engine (Tokyo Night, Everforest, Catppuccin, Nord, Dracula, Gruvbox, Atom One) with native RTL/LTR typography & mobile support.",
-  "author": "Your Name",
+  "author": "Yashar",
   "homepage_url": "https://github.com/yourusername/joplin-plugin-theme-studio",
   "platforms": ["desktop", "mobile"],
   "keywords": [
