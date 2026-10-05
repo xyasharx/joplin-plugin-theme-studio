@@ -30,7 +30,7 @@
     "atom-one",
     "mermaid"
   ],
-  "author": "Your Name",
+  "author": "Yashar",
   "license": "MIT",
   "devDependencies": {
     "copy-webpack-plugin": "^14.0.0",
