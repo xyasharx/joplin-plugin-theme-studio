@@ -1,6 +1,6 @@
 {
   "name": "joplin-plugin-theme-studio",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "All-in-one multi-palette engine with native RTL/LTR typography for Joplin",
   "main": "dist/index.js",
   "files": [
