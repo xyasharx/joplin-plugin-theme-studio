@@ -14,7 +14,7 @@ Tired of copying CSS snippets, broken bullet points in RTL, unreadable white tex
 
 **Theme Studio** moves all custom styling into a single, configurable plugin:
 - 🔄 **One-Click Palette Switching:** Change themes dynamically from Joplin's settings.
-- 🌍 **Native RTL & Bidirectional Engine:** Flawless right-to-left alignment powered by [Vazirmatn](https://github.com/rastikerdar/vazirmatn), with full bullet marker and border fixes.
+- 🌍 **Native RTL & Bidirectional Engine:** Flawless right-to-left alignment, with full bullet marker and border fixes.
 - 🔀 **Isolated LTR Blocks:** Mix English and RTL text seamlessly using `<div dir="ltr">...</div>`.
 - 📱 **Mobile & Desktop Ready:** Works across Joplin Desktop (Windows, macOS, Linux) and Joplin Mobile (Android/iOS).
 - 📊 **Enhanced Mermaid Diagrams:** Centered flowcharts, rounded nodes, transparent label backgrounds, and horizontal scrollbars.
@@ -56,7 +56,7 @@ Tired of copying CSS snippets, broken bullet points in RTL, unreadable white tex
 ### Option 2: Manual Installation (`.jpl` file)
 
 #### On Desktop:
-1. Download the latest `org.joplin.plugin.theme-studio.jpl` from the [Releases](https://github.com/yourusername/joplin-plugin-theme-studio/releases) page.
+1. Download the latest `org.joplin.plugin.theme-studio.jpl` from the [Releases](https://github.com/xyasharx/joplin-plugin-theme-studio/releases) page.
 2. Open Joplin > **Tools > Options > Plugins**.
 3. Click the gear icon (**⚙**) in the top right > **Install from file**.
 4. Select the downloaded `.jpl` file and restart Joplin.
