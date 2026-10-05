@@ -108,7 +108,7 @@ To run or modify Theme Studio locally:
 
 1. **Clone the repo:**
    ```bash
-   git clone https://github.com/yourusername/joplin-plugin-theme-studio.git
+   git clone https://github.com/xyasharx/joplin-plugin-theme-studio.git
    cd joplin-plugin-theme-studio
    ```
 
