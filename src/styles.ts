@@ -3,25 +3,98 @@ import { themes } from './themes';
 export interface StyleOptions {
   themeKey: string;
   direction: string;
+  fontPreset: string;
   fontFamily: string;
+  codeFontPreset: string;
   codeFont: string;
   fontSize: string;
   lineHeight: string;
+  contentMaxWidth: string;
 }
 
 export function buildThemeCss(options: StyleOptions): string {
   const selectedTheme = themes[options.themeKey] || themes['atom-one-dark'];
   const isRtl = options.direction === 'rtl';
 
+  // 1. Resolve Font Family & Web Font Imports
+  let fontImport = '';
+  let resolvedFont = options.fontFamily;
+
+  switch (options.fontPreset) {
+    case 'vazirmatn':
+      fontImport += `@import url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css');\n`;
+      resolvedFont = `'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+      break;
+    case 'inter':
+      fontImport += `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');\n`;
+      resolvedFont = `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+      break;
+    case 'noto-arabic':
+      fontImport += `@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;600;700&display=swap');\n`;
+      resolvedFont = `'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, sans-serif`;
+      break;
+    case 'roboto':
+      fontImport += `@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');\n`;
+      resolvedFont = `'Roboto', -apple-system, BlinkMacSystemFont, sans-serif`;
+      break;
+    case 'noto-cjk-sc':
+      fontImport += `@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');\n`;
+      resolvedFont = `'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif`;
+      break;
+    case 'noto-cjk-jp':
+      fontImport += `@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');\n`;
+      resolvedFont = `'Noto Sans JP', 'Hiragino Sans', 'Meiryo', sans-serif`;
+      break;
+    case 'heebo':
+      fontImport += `@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700&display=swap');\n`;
+      resolvedFont = `'Heebo', -apple-system, BlinkMacSystemFont, sans-serif`;
+      break;
+    case 'noto-devanagari':
+      fontImport += `@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&display=swap');\n`;
+      resolvedFont = `'Noto Sans Devanagari', -apple-system, BlinkMacSystemFont, sans-serif`;
+      break;
+    case 'lora':
+      fontImport += `@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&display=swap');\n`;
+      resolvedFont = `'Lora', Georgia, serif`;
+      break;
+    case 'system':
+      resolvedFont = `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif`;
+      break;
+    case 'custom':
+    default:
+      resolvedFont = options.fontFamily || `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+      break;
+  }
+
+  // 2. Resolve Monospace Code Font
+  let resolvedCodeFont = options.codeFont;
+  switch (options.codeFontPreset) {
+    case 'fira-code':
+      fontImport += `@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap');\n`;
+      resolvedCodeFont = `'Fira Code', monospace`;
+      break;
+    case 'jetbrains-mono':
+      fontImport += `@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');\n`;
+      resolvedCodeFont = `'JetBrains Mono', monospace`;
+      break;
+    case 'system-mono':
+      resolvedCodeFont = `'Cascadia Code', 'Consolas', 'Courier New', monospace`;
+      break;
+    case 'custom':
+    default:
+      resolvedCodeFont = options.codeFont || `'Cascadia Code', 'Fira Code', 'Consolas', monospace`;
+      break;
+  }
+
+  // 3. Theme CSS Variables
   let cssVariables = ':root {\n';
   for (const [key, value] of Object.entries(selectedTheme.variables)) {
     cssVariables += `  ${key}: ${value};\n`;
   }
-  cssVariables += `  --mermaid-font-family: ${options.fontFamily} !important;\n`;
+  cssVariables += `  --mermaid-font-family: ${resolvedFont} !important;\n`;
   cssVariables += '}\n';
 
-  const fontImport = `@import url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css');\n`;
-
+  // 4. Directional Styling (RTL vs LTR)
   const dirRules = isRtl
     ? `
 /* === RTL BASE RULES === */
@@ -144,26 +217,50 @@ body#tinymce td, #rendered-md td {
 }
 `;
 
+  // 5. Reading Width / Reader Mode
+  let contentWidthCss = '';
+  if (options.contentMaxWidth === 'compact') {
+    contentWidthCss = `max-width: 760px !important; margin: 0 auto !important;`;
+  } else if (options.contentMaxWidth === 'comfortable') {
+    contentWidthCss = `max-width: 920px !important; margin: 0 auto !important;`;
+  }
+
+  // 6. Core Structural Styles & Fixes
   const coreStyles = `
+/* Universal Box-Sizing to Prevent Document-Level Overflow */
+*, *::before, *::after {
+  box-sizing: border-box !important;
+}
+
+html, body, #rendered-md {
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+
 ::selection {
   background-color: var(--od-selection) !important;
 }
 
 body#tinymce, body, #rendered-md {
-  font-family: ${options.fontFamily} !important;
+  font-family: ${resolvedFont} !important;
   line-height: ${options.lineHeight} !important;
   font-size: ${options.fontSize} !important;
   background-color: var(--od-bg) !important;
   color: var(--od-fg) !important;
   word-break: break-word !important;
-  overflow-wrap: break-word !important;
+  overflow-wrap: anywhere !important;
   -webkit-font-smoothing: antialiased !important;
   -moz-osx-font-smoothing: grayscale !important;
 }
 
+#rendered-md {
+  ${contentWidthCss}
+}
+
+/* Headings */
 body#tinymce h1, #rendered-md h1 {
   color: var(--od-h1) !important;
-  font-size: 1.75rem !important;
+  font-size: 1.75em !important;
   font-weight: 800 !important;
   padding: 0 0 8px 0 !important;
   margin: 32px 0 20px 0 !important;
@@ -172,15 +269,15 @@ body#tinymce h1, #rendered-md h1 {
 
 body#tinymce h2, #rendered-md h2 {
   color: var(--od-h2) !important;
-  font-size: 1.42rem !important;
+  font-size: 1.42em !important;
   font-weight: 700 !important;
   margin: 28px 0 18px 0 !important;
 }
 
-body#tinymce h3, #rendered-md h3 { color: var(--od-h3) !important; font-size: 1.25rem !important; font-weight: 600 !important; margin: 24px 0 14px 0 !important; }
-body#tinymce h4, #rendered-md h4 { color: var(--od-h4) !important; font-size: 1.12rem !important; font-weight: 600 !important; margin: 20px 0 12px 0 !important; }
-body#tinymce h5, #rendered-md h5 { color: var(--od-h5) !important; font-size: 1.05rem !important; font-weight: 600 !important; margin: 18px 0 10px 0 !important; }
-body#tinymce h6, #rendered-md h6 { color: var(--od-h6) !important; font-size: 1.0rem !important; font-weight: 700 !important; margin: 16px 0 10px 0 !important; }
+body#tinymce h3, #rendered-md h3 { color: var(--od-h3) !important; font-size: 1.25em !important; font-weight: 600 !important; margin: 24px 0 14px 0 !important; }
+body#tinymce h4, #rendered-md h4 { color: var(--od-h4) !important; font-size: 1.12em !important; font-weight: 600 !important; margin: 20px 0 12px 0 !important; }
+body#tinymce h5, #rendered-md h5 { color: var(--od-h5) !important; font-size: 1.05em !important; font-weight: 600 !important; margin: 18px 0 10px 0 !important; }
+body#tinymce h6, #rendered-md h6 { color: var(--od-h6) !important; font-size: 1.0em !important; font-weight: 700 !important; margin: 16px 0 10px 0 !important; }
 
 #rendered-md li, body#tinymce li {
   margin-bottom: 0.45em !important;
@@ -196,12 +293,23 @@ body#tinymce h6, #rendered-md h6 { color: var(--od-h6) !important; font-size: 1.
   vertical-align: middle !important;
 }
 
+/* Standard & Enhanced Blockquotes */
 body#tinymce blockquote, #rendered-md blockquote {
   padding: 10px 16px !important;
   margin: 18px 0 !important;
   background: var(--od-bg-alt) !important;
   border-radius: 4px !important;
   color: var(--od-fg) !important;
+}
+
+/* Callouts / Admonitions (Obsidian / GitHub Syntax) */
+#rendered-md blockquote:has(p:first-child:is(
+  [data-callout="note"], [data-callout="info"],
+  [data-callout="tip"], [data-callout="warning"], [data-callout="danger"]
+)),
+#rendered-md blockquote:has(> p:first-child > strong:first-child) {
+  border-radius: 6px !important;
+  padding: 12px 18px !important;
 }
 
 body#tinymce a, #rendered-md a {
@@ -227,6 +335,7 @@ kbd {
   padding: 2px 5px !important;
   border-radius: 4px !important;
   font-size: 0.85em !important;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.2) !important;
 }
 
 body#tinymce .joplin-source,
@@ -241,8 +350,9 @@ div.joplin-editable > pre.joplin-source {
   border: none !important;
 }
 
+/* Inline Code & Code Blocks (Isolated & Preserving Trees) */
 body#tinymce code, #rendered-md code {
-  font-family: ${options.codeFont} !important;
+  font-family: ${resolvedCodeFont} !important;
   background-color: var(--od-code-bg) !important;
   color: var(--od-code-fg) !important;
   padding: 2px 6px !important;
@@ -292,9 +402,12 @@ body#tinymce :is(p, li) code, #rendered-md :is(p, li) code {
   unicode-bidi: embed !important;
   vertical-align: baseline !important;
   white-space: normal !important;
+  max-width: 100% !important;
+  overflow-wrap: anywhere !important;
   word-break: break-word !important;
 }
 
+/* Tables (Contrast Fix for Light Themes + Isolated Horizontal Scroll) */
 body#tinymce table, #rendered-md table {
   border-collapse: collapse !important;
   width: 100% !important;
@@ -302,6 +415,7 @@ body#tinymce table, #rendered-md table {
   margin: 20px 0 !important;
   border: 1px solid var(--od-border) !important;
   display: block !important;
+  box-sizing: border-box !important;
   overflow-x: auto !important;
   -webkit-overflow-scrolling: touch !important;
   scrollbar-width: thin !important;
@@ -332,6 +446,7 @@ body#tinymce table td :not(code):not(pre):not(a) {
 body#tinymce tr:nth-child(even), #rendered-md tr:nth-child(even) { background-color: var(--od-table-even) !important; }
 body#tinymce tr:nth-child(odd), #rendered-md tr:nth-child(odd) { background-color: var(--od-table-odd) !important; }
 
+/* Mermaid Diagrams (Isolated Overflow without 9999px Bug) */
 #rendered-md .mermaid, #rendered-md div.mermaid, #rendered-md pre.mermaid,
 body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   display: block !important;
@@ -339,8 +454,8 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   width: 100% !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
-  margin: 28px 0 !important;
-  padding: 24px 18px !important;
+  margin: 24px 0 !important;
+  padding: 20px 14px !important;
   direction: ltr !important;
   overflow-x: auto !important;
   overflow-y: hidden !important;
@@ -356,9 +471,8 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   vertical-align: middle !important;
   margin: 0 auto !important;
   height: auto !important;
-  max-height: none !important;
-  width: 9999px !important;
-  min-width: min(100%, 300px);
+  max-width: 100% !important;
+  width: auto !important;
 }
 
 .mermaid foreignObject { overflow: visible !important; }
@@ -394,20 +508,60 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   padding: 1px 6px !important;
 }
 
-@media screen and (max-width: 768px) {
-  body#tinymce, body, #rendered-md { font-size: 16px !important; line-height: 1.75 !important; }
-  body#tinymce h1, #rendered-md h1 { font-size: 1.55rem !important; margin: 22px 0 14px 0 !important; }
-  body#tinymce h2, #rendered-md h2 { font-size: 1.35rem !important; margin: 20px 0 12px 0 !important; }
-  body#tinymce pre:not(.mermaid):not(.joplin-source),
-  #rendered-md pre:not(.mermaid):not(.joplin-source) {
-    font-size: 13.5px !important;
-    padding: 10px 12px !important;
-    white-space: pre !important;
-    overflow-x: auto !important;
-  }
-  body#tinymce table, #rendered-md table { font-size: 13.5px !important; }
+/* KaTeX Math Equations */
+.katex-display {
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  box-sizing: border-box !important;
+  padding: 6px 0 !important;
 }
 
+/* =================================================================
+   MOBILE RESPONSIVENESS (< 768px)
+   CRITICAL FIX: Respects user-configured font size & prevents screen overflow
+   ================================================================= */
+@media screen and (max-width: 768px) {
+  body#tinymce, body, #rendered-md {
+    font-size: ${options.fontSize} !important;
+    line-height: ${options.lineHeight} !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  body#tinymce h1, #rendered-md h1 { font-size: 1.6em !important; margin: 20px 0 12px 0 !important; }
+  body#tinymce h2, #rendered-md h2 { font-size: 1.35em !important; margin: 18px 0 10px 0 !important; }
+  body#tinymce h3, #rendered-md h3 { font-size: 1.2em !important; margin: 16px 0 8px 0 !important; }
+
+  body#tinymce pre:not(.mermaid):not(.joplin-source),
+  #rendered-md pre:not(.mermaid):not(.joplin-source) {
+    font-size: 0.9em !important;
+    padding: 10px 12px !important;
+    white-space: pre !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  body#tinymce table, #rendered-md table {
+    font-size: 0.9em !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  #rendered-md .mermaid, body#tinymce .mermaid {
+    padding: 14px 8px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: auto !important;
+  }
+}
+
+/* Print & PDF Export */
 @media print {
   body, #rendered-md { background-color: #ffffff !important; color: #000000 !important; font-size: 14px !important; }
   #rendered-md .mermaid, body#tinymce .mermaid {
@@ -419,6 +573,7 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   h1, h2, h3, h4, h5, h6 { page-break-after: avoid !important; break-after: avoid !important; color: #000000 !important; }
 }
 
+/* Custom Scrollbars */
 ::-webkit-scrollbar { width: 8px !important; height: 8px !important; }
 ::-webkit-scrollbar-track { background: var(--od-scrollbar-track) !important; border-radius: 4px !important; }
 ::-webkit-scrollbar-thumb { background: var(--od-scrollbar-thumb) !important; border-radius: 4px !important; }
