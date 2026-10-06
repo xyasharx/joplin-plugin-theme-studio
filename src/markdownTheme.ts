@@ -7,18 +7,24 @@ module.exports = {
         markdownIt.core.ruler.push('theme_studio_injector', (state: any) => {
           const themeKey = pluginOptions.settingValue('theme') || 'atom-one-dark';
           const direction = pluginOptions.settingValue('direction') || 'rtl';
-          const fontFamily = pluginOptions.settingValue('fontFamily') || "'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-          const codeFont = pluginOptions.settingValue('codeFont') || "'Cascadia Code', 'Fira Code', 'Consolas', monospace";
+          const fontPreset = pluginOptions.settingValue('fontPreset') || 'vazirmatn';
+          const fontFamily = pluginOptions.settingValue('fontFamily') || '';
+          const codeFontPreset = pluginOptions.settingValue('codeFontPreset') || 'fira-code';
+          const codeFont = pluginOptions.settingValue('codeFont') || '';
           const fontSize = pluginOptions.settingValue('fontSize') || '16px';
           const lineHeight = pluginOptions.settingValue('lineHeight') || '1.8';
+          const contentMaxWidth = pluginOptions.settingValue('contentMaxWidth') || 'full';
 
           const css = buildThemeCss({
             themeKey,
             direction,
+            fontPreset,
             fontFamily,
+            codeFontPreset,
             codeFont,
             fontSize,
             lineHeight,
+            contentMaxWidth,
           });
 
           const token = new state.Token('html_block', '', 0);
