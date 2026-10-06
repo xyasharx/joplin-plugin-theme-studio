@@ -18,6 +18,9 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      # Map the secret at the job level so it can be safely evaluated in if conditions
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
     steps:
       - name: Checkout repository
@@ -68,9 +71,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 2. Publish to npm (Skipped if unchecked or if NPM_TOKEN secret is not set)
+      # 2. Publish to npm (Safely checks job-level env variable)
       - name: Publish to npm
-        if: ${{ (github.event_name == 'push' || inputs.publish_to_npm == true) && secrets.NPM_TOKEN != '' }}
+        if: ${{ (github.event_name == 'push' || inputs.publish_to_npm == true) && env.NPM_TOKEN != '' }}
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
