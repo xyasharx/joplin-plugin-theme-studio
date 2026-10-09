@@ -3,11 +3,30 @@ import { ContentScriptType, SettingItemType } from 'api/types';
 
 joplin.plugins.register({
   onStart: async function () {
+    // 1. Detect user's Joplin language to set smart, non-intrusive defaults
+    let defaultDirection = 'ltr';
+    let defaultFontPreset = 'inter';
+
+    try {
+      const userLocale: string = await joplin.settings.globalValue('locale');
+      const rtlLanguages = ['fa', 'ar', 'he', 'ur', 'ug', 'ps', 'yi'];
+      if (userLocale && rtlLanguages.some((lang) => userLocale.toLowerCase().startsWith(lang))) {
+        defaultDirection = 'rtl';
+        defaultFontPreset = 'vazirmatn';
+      }
+    } catch (_err) {
+      // Safe fallback: prioritize LTR & Inter for international audience
+      defaultDirection = 'ltr';
+      defaultFontPreset = 'inter';
+    }
+
+    // 2. Register Settings Section
     await joplin.settings.registerSection('themeStudioSection', {
       label: 'Theme Studio',
       iconName: 'fas fa-palette',
     });
 
+    // 3. Register Settings with International Priority
     await joplin.settings.registerSettings({
       'theme': {
         value: 'atom-one-dark',
@@ -33,20 +52,21 @@ joplin.plugins.register({
         },
       },
       'direction': {
-        value: 'rtl',
+        value: defaultDirection,
         type: SettingItemType.String,
         section: 'themeStudioSection',
         isEnum: true,
         public: true,
         label: 'Layout Direction',
-        description: 'Choose primary orientation (RTL includes automatic [dir="ltr"] isolation).',
+        description: 'Primary text orientation. LTR is standard; Auto adjusts per paragraph.',
         options: {
-          'rtl': 'Right-to-Left (Persian / Arabic / Hebrew)',
-          'ltr': 'Left-to-Right (English / Latin / CJK)',
+          'ltr': 'Left-to-Right (LTR - English / Latin / CJK / Global)',
+          'auto': 'Auto-Detect (Per-Paragraph BiDi)',
+          'rtl': 'Right-to-Left (RTL - Persian / Arabic / Hebrew)',
         },
       },
       'fontPreset': {
-        value: 'vazirmatn',
+        value: defaultFontPreset,
         type: SettingItemType.String,
         section: 'themeStudioSection',
         isEnum: true,
@@ -54,21 +74,21 @@ joplin.plugins.register({
         label: 'International Font Preset',
         description: 'Web fonts loaded on the fly (ideal for Mobile without local font installs).',
         options: {
+          'inter': 'Inter (Global English, Latin, European, Cyrillic)',
+          'roboto': 'Roboto (Modern Clean Sans)',
+          'system': 'System Default (OS Native, Zero Network Overhead)',
           'vazirmatn': 'Vazirmatn (Persian, Arabic, Kurdish, Urdu)',
           'noto-arabic': 'Noto Sans Arabic (Modern Arabic)',
-          'inter': 'Inter (English, Latin, European, Cyrillic)',
-          'roboto': 'Roboto (Modern Clean Sans)',
           'noto-cjk-sc': 'Noto Sans SC (Simplified Chinese)',
           'noto-cjk-jp': 'Noto Sans JP (Japanese)',
           'heebo': 'Heebo (Hebrew & Latin)',
           'noto-devanagari': 'Noto Sans Devanagari (Hindi, Sanskrit)',
-          'lora': 'Lora (Editorial Serif for Books & Articles)',
-          'system': 'System Default (OS Native)',
+          'lora': 'Lora (Editorial Serif for Books & Long Articles)',
           'custom': 'Custom Font Stack (use field below)',
         },
       },
       'fontFamily': {
-        value: "'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        value: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
         type: SettingItemType.String,
         section: 'themeStudioSection',
         public: true,
@@ -107,7 +127,7 @@ joplin.plugins.register({
         description: 'Base font size (e.g., 14px, 16px, 18px, 20px). Works across Desktop & Mobile.',
       },
       'lineHeight': {
-        value: '1.8',
+        value: '1.75',
         type: SettingItemType.String,
         section: 'themeStudioSection',
         public: true,
@@ -130,6 +150,7 @@ joplin.plugins.register({
       },
     });
 
+    // 4. Register Markdown-it content script
     await joplin.contentScripts.register(
       ContentScriptType.MarkdownItPlugin,
       'themeStudioMarkdownIt',
