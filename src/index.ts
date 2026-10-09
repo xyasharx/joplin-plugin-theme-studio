@@ -15,7 +15,6 @@ joplin.plugins.register({
         defaultFontPreset = 'vazirmatn';
       }
     } catch (_err) {
-      // Safe fallback: prioritize LTR & Inter for international audience
       defaultDirection = 'ltr';
       defaultFontPreset = 'inter';
     }
@@ -26,7 +25,7 @@ joplin.plugins.register({
       iconName: 'fas fa-palette',
     });
 
-    // 3. Register Settings with International Priority
+    // 3. Register Settings with PDF Layout Fidelity
     await joplin.settings.registerSettings({
       'theme': {
         value: 'atom-one-dark',
@@ -146,6 +145,19 @@ joplin.plugins.register({
           'full': 'Full Width (100%)',
           'comfortable': 'Comfortable Reading (920px Centered)',
           'compact': 'Compact Focus (760px Centered)',
+        },
+      },
+      'pdfExportStyle': {
+        value: 'exact',
+        type: SettingItemType.String,
+        section: 'themeStudioSection',
+        isEnum: true,
+        public: true,
+        label: 'PDF Export Appearance',
+        description: 'Controls layout and background fidelity when exporting to PDF.',
+        options: {
+          'exact': 'Exact Match (100% Identical to Screen Layout & Theme)',
+          'paper': 'Paper Friendly (White Page Background with Themed Accents)',
         },
       },
     });
