@@ -322,6 +322,7 @@ body#tinymce h6, #rendered-md h6 { color: var(--od-h6) !important; font-size: 1.
   font-weight: bold !important;
 }
 
+/* Intelligent Checklist Styling */
 .md-checkbox input[type="checkbox"] {
   vertical-align: middle !important;
   cursor: pointer !important;
@@ -340,6 +341,7 @@ body#tinymce li:has(input[type="checkbox"]:checked) code {
   text-decoration: none !important;
 }
 
+/* Responsive Images */
 #rendered-md img,
 body#tinymce img {
   max-width: 100% !important;
@@ -352,6 +354,7 @@ body#tinymce img {
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08) !important;
 }
 
+/* Links (Standard vs Joplin Note Links) */
 body#tinymce a, #rendered-md a {
   color: var(--od-link) !important;
   text-decoration: none !important;
@@ -371,6 +374,7 @@ body#tinymce a:hover, #rendered-md a:hover {
   border-bottom-style: solid !important;
 }
 
+/* Blockquotes & Callouts */
 body#tinymce blockquote, #rendered-md blockquote {
   padding: 10px 16px !important;
   margin: 18px 0 !important;
@@ -408,6 +412,7 @@ div.joplin-editable > pre.joplin-source {
   border: none !important;
 }
 
+/* Inline Code & Code Blocks */
 body#tinymce code, #rendered-md code {
   font-family: ${resolvedCodeFont} !important;
   background-color: var(--od-code-bg) !important;
@@ -464,6 +469,25 @@ body#tinymce :is(p, li) code, #rendered-md :is(p, li) code {
   word-break: break-word !important;
 }
 
+/* =================================================================
+   TABLES: COMPREHENSIVE FONT OVERRIDE & CONTRAST FIX
+   ================================================================= */
+body#tinymce table, #rendered-md table,
+body#tinymce th, #rendered-md th,
+body#tinymce td, #rendered-md td {
+  font-family: ${resolvedFont} !important;
+}
+
+body#tinymce table :is(th, td) *:not(code):not(pre),
+#rendered-md table :is(th, td) *:not(code):not(pre) {
+  font-family: ${resolvedFont} !important;
+}
+
+body#tinymce table :is(th, td) code,
+#rendered-md table :is(th, td) code {
+  font-family: ${resolvedCodeFont} !important;
+}
+
 body#tinymce table, #rendered-md table {
   border-collapse: collapse !important;
   width: 100% !important;
@@ -502,6 +526,7 @@ body#tinymce table td :not(code):not(pre):not(a) {
 body#tinymce tr:nth-child(even), #rendered-md tr:nth-child(even) { background-color: var(--od-table-even) !important; }
 body#tinymce tr:nth-child(odd), #rendered-md tr:nth-child(odd) { background-color: var(--od-table-odd) !important; }
 
+/* Mermaid Diagrams */
 #rendered-md .mermaid, #rendered-md div.mermaid, #rendered-md pre.mermaid,
 body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   display: block !important;
@@ -593,6 +618,7 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   color: var(--od-comment) !important;
 }
 
+/* Mobile Responsiveness (< 768px) */
 @media screen and (max-width: 768px) {
   body#tinymce, body, #rendered-md {
     font-size: ${options.fontSize} !important;
@@ -638,7 +664,6 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
 
 /* =================================================================
    FLAWLESS PDF & PRINT EXPORT ENGINE
-   Matches screen layout with exact colors, zero table cropping & wrapped code
    ================================================================= */
 @page {
   margin: 12mm 15mm 12mm 15mm;
@@ -659,6 +684,18 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
     padding: 0 !important;
     font-size: 14px !important;
     line-height: ${options.lineHeight} !important;
+  }
+
+  /* Retain Chosen Font in Tables During PDF Export */
+  body#tinymce table, #rendered-md table,
+  body#tinymce th, #rendered-md th,
+  body#tinymce td, #rendered-md td {
+    font-family: ${resolvedFont} !important;
+  }
+
+  body#tinymce table :is(th, td) code,
+  #rendered-md table :is(th, td) code {
+    font-family: ${resolvedCodeFont} !important;
   }
 
   /* Joplin Exported Note Title Styling */
