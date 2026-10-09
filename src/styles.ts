@@ -16,7 +16,7 @@ export function buildThemeCss(options: StyleOptions): string {
   const selectedTheme = themes[options.themeKey] || themes['atom-one-dark'];
   const isRtl = options.direction === 'rtl';
 
-  // 1. Resolve Font Family & Web Font Imports
+  // 1. Resolve Primary Font Stack & CDN Imports
   let fontImport = '';
   let resolvedFont = options.fontFamily;
 
@@ -66,7 +66,7 @@ export function buildThemeCss(options: StyleOptions): string {
       break;
   }
 
-  // 2. Resolve Monospace Code Font
+  // 2. Resolve Monospace Code Font Stack
   let resolvedCodeFont = options.codeFont;
   switch (options.codeFontPreset) {
     case 'fira-code':
@@ -217,7 +217,7 @@ body#tinymce td, #rendered-md td {
 }
 `;
 
-  // 5. Reading Width / Reader Mode
+  // 5. Reading Width (Focus Mode)
   let contentWidthCss = '';
   if (options.contentMaxWidth === 'compact') {
     contentWidthCss = `max-width: 760px !important; margin: 0 auto !important;`;
@@ -225,9 +225,9 @@ body#tinymce td, #rendered-md td {
     contentWidthCss = `max-width: 920px !important; margin: 0 auto !important;`;
   }
 
-  // 6. Core Structural Styles & Fixes
+  // 6. Complete Core Styles with the 4 Missing Essentials
   const coreStyles = `
-/* Universal Box-Sizing to Prevent Document-Level Overflow */
+/* Universal Box-Sizing: Prevents Any Document-Level Horizontal Overflow */
 *, *::before, *::after {
   box-sizing: border-box !important;
 }
@@ -289,36 +289,72 @@ body#tinymce h6, #rendered-md h6 { color: var(--od-h6) !important; font-size: 1.
   font-weight: bold !important;
 }
 
+/* =================================================================
+   ESSENTIAL 1: Intelligent Checklist & Completed Task Styling
+   ================================================================= */
 .md-checkbox input[type="checkbox"] {
   vertical-align: middle !important;
+  cursor: pointer !important;
 }
 
-/* Standard & Enhanced Blockquotes */
+#rendered-md li:has(input[type="checkbox"]:checked),
+body#tinymce li:has(input[type="checkbox"]:checked) {
+  opacity: 0.55 !important;
+  text-decoration: line-through !important;
+  transition: opacity 0.2s ease !important;
+}
+
+#rendered-md li:has(input[type="checkbox"]:checked) code,
+body#tinymce li:has(input[type="checkbox"]:checked) code {
+  opacity: 0.8 !important;
+  text-decoration: none !important;
+}
+
+/* =================================================================
+   ESSENTIAL 2: Smart Image Bounds & Soft Elevation (No 4K Blowouts)
+   ================================================================= */
+#rendered-md img,
+body#tinymce img {
+  max-width: 100% !important;
+  max-height: 520px !important;
+  height: auto !important;
+  object-fit: contain !important;
+  display: block !important;
+  margin: 18px auto !important;
+  border-radius: 6px !important;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* =================================================================
+   ESSENTIAL 3: Internal Note Links vs External Links Distinction
+   ================================================================= */
+body#tinymce a, #rendered-md a {
+  color: var(--od-link) !important;
+  text-decoration: none !important;
+  transition: color 0.15s ease !important;
+}
+body#tinymce a:hover, #rendered-md a:hover {
+  color: var(--od-link-hover) !important;
+  text-decoration: underline !important;
+}
+
+/* Cross-Note Link (Joplin Note Link Syntax: ':/id') */
+#rendered-md a[href^=":/"], body#tinymce a[href^=":/"] {
+  font-weight: 600 !important;
+  border-bottom: 1.5px dashed var(--od-link) !important;
+  text-decoration: none !important;
+}
+#rendered-md a[href^=":/"]:hover, body#tinymce a[href^=":/"]:hover {
+  border-bottom-style: solid !important;
+}
+
+/* Blockquotes & Callouts */
 body#tinymce blockquote, #rendered-md blockquote {
   padding: 10px 16px !important;
   margin: 18px 0 !important;
   background: var(--od-bg-alt) !important;
   border-radius: 4px !important;
   color: var(--od-fg) !important;
-}
-
-/* Callouts / Admonitions (Obsidian / GitHub Syntax) */
-#rendered-md blockquote:has(p:first-child:is(
-  [data-callout="note"], [data-callout="info"],
-  [data-callout="tip"], [data-callout="warning"], [data-callout="danger"]
-)),
-#rendered-md blockquote:has(> p:first-child > strong:first-child) {
-  border-radius: 6px !important;
-  padding: 12px 18px !important;
-}
-
-body#tinymce a, #rendered-md a {
-  color: var(--od-link) !important;
-  text-decoration: none !important;
-}
-body#tinymce a:hover, #rendered-md a:hover {
-  color: var(--od-link-hover) !important;
-  text-decoration: underline !important;
 }
 
 mark {
@@ -338,6 +374,7 @@ kbd {
   box-shadow: 0 1px 0 rgba(0,0,0,0.2) !important;
 }
 
+/* Joplin Source Cleanup */
 body#tinymce .joplin-source,
 #rendered-md .joplin-source,
 pre.joplin-source,
@@ -350,7 +387,7 @@ div.joplin-editable > pre.joplin-source {
   border: none !important;
 }
 
-/* Inline Code & Code Blocks (Isolated & Preserving Trees) */
+/* Inline Code & Preserved Tree Blocks */
 body#tinymce code, #rendered-md code {
   font-family: ${resolvedCodeFont} !important;
   background-color: var(--od-code-bg) !important;
@@ -407,7 +444,7 @@ body#tinymce :is(p, li) code, #rendered-md :is(p, li) code {
   word-break: break-word !important;
 }
 
-/* Tables (Contrast Fix for Light Themes + Isolated Horizontal Scroll) */
+/* Tables (Isolated Horizontal Scroll & Contrast Fix) */
 body#tinymce table, #rendered-md table {
   border-collapse: collapse !important;
   width: 100% !important;
@@ -446,7 +483,7 @@ body#tinymce table td :not(code):not(pre):not(a) {
 body#tinymce tr:nth-child(even), #rendered-md tr:nth-child(even) { background-color: var(--od-table-even) !important; }
 body#tinymce tr:nth-child(odd), #rendered-md tr:nth-child(odd) { background-color: var(--od-table-odd) !important; }
 
-/* Mermaid Diagrams (Isolated Overflow without 9999px Bug) */
+/* Mermaid Diagrams (Safe Centering & Container Containment) */
 #rendered-md .mermaid, #rendered-md div.mermaid, #rendered-md pre.mermaid,
 body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   display: block !important;
@@ -508,7 +545,7 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   padding: 1px 6px !important;
 }
 
-/* KaTeX Math Equations */
+/* KaTeX Equations */
 .katex-display {
   max-width: 100% !important;
   overflow-x: auto !important;
@@ -519,9 +556,30 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
 }
 
 /* =================================================================
-   MOBILE RESPONSIVENESS (< 768px)
-   CRITICAL FIX: Respects user-configured font size & prevents screen overflow
+   ESSENTIAL 4: Joplin Native Table of Contents ([[toc]]) & Footnotes
    ================================================================= */
+#rendered-md .table-of-contents, body#tinymce .table-of-contents {
+  background-color: var(--od-bg-alt) !important;
+  border: 1px solid var(--od-border) !important;
+  border-radius: 6px !important;
+  padding: 12px 18px !important;
+  margin: 20px 0 !important;
+  display: inline-block !important;
+  min-width: min(100%, 300px) !important;
+}
+#rendered-md .table-of-contents ul {
+  margin: 4px 0 !important;
+}
+
+#rendered-md .footnotes, body#tinymce .footnotes {
+  margin-top: 40px !important;
+  padding-top: 16px !important;
+  border-top: 1px solid var(--od-border) !important;
+  font-size: 0.88em !important;
+  color: var(--od-comment) !important;
+}
+
+/* Mobile Responsiveness (< 768px) */
 @media screen and (max-width: 768px) {
   body#tinymce, body, #rendered-md {
     font-size: ${options.fontSize} !important;
@@ -533,6 +591,10 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   body#tinymce h1, #rendered-md h1 { font-size: 1.6em !important; margin: 20px 0 12px 0 !important; }
   body#tinymce h2, #rendered-md h2 { font-size: 1.35em !important; margin: 18px 0 10px 0 !important; }
   body#tinymce h3, #rendered-md h3 { font-size: 1.2em !important; margin: 16px 0 8px 0 !important; }
+
+  #rendered-md img, body#tinymce img {
+    max-height: 420px !important;
+  }
 
   body#tinymce pre:not(.mermaid):not(.joplin-source),
   #rendered-md pre:not(.mermaid):not(.joplin-source) {
@@ -561,7 +623,7 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   }
 }
 
-/* Print & PDF Export */
+/* Clean Print & PDF Export */
 @media print {
   body, #rendered-md { background-color: #ffffff !important; color: #000000 !important; font-size: 14px !important; }
   #rendered-md .mermaid, body#tinymce .mermaid {
@@ -573,7 +635,7 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   h1, h2, h3, h4, h5, h6 { page-break-after: avoid !important; break-after: avoid !important; color: #000000 !important; }
 }
 
-/* Custom Scrollbars */
+/* Custom High-Contrast Scrollbars */
 ::-webkit-scrollbar { width: 8px !important; height: 8px !important; }
 ::-webkit-scrollbar-track { background: var(--od-scrollbar-track) !important; border-radius: 4px !important; }
 ::-webkit-scrollbar-thumb { background: var(--od-scrollbar-thumb) !important; border-radius: 4px !important; }
