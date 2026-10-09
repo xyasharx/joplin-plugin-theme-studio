@@ -14,28 +14,27 @@ export interface StyleOptions {
 
 export function buildThemeCss(options: StyleOptions): string {
   const selectedTheme = themes[options.themeKey] || themes['atom-one-dark'];
-  const isRtl = options.direction === 'rtl';
 
   // 1. Resolve Primary Font Stack & CDN Imports
   let fontImport = '';
   let resolvedFont = options.fontFamily;
 
   switch (options.fontPreset) {
-    case 'vazirmatn':
-      fontImport += `@import url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css');\n`;
-      resolvedFont = `'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
-      break;
     case 'inter':
       fontImport += `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');\n`;
       resolvedFont = `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
       break;
-    case 'noto-arabic':
-      fontImport += `@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;600;700&display=swap');\n`;
-      resolvedFont = `'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, sans-serif`;
-      break;
     case 'roboto':
       fontImport += `@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');\n`;
       resolvedFont = `'Roboto', -apple-system, BlinkMacSystemFont, sans-serif`;
+      break;
+    case 'vazirmatn':
+      fontImport += `@import url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css');\n`;
+      resolvedFont = `'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+      break;
+    case 'noto-arabic':
+      fontImport += `@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;600;700&display=swap');\n`;
+      resolvedFont = `'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, sans-serif`;
       break;
     case 'noto-cjk-sc':
       fontImport += `@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');\n`;
@@ -94,9 +93,11 @@ export function buildThemeCss(options: StyleOptions): string {
   cssVariables += `  --mermaid-font-family: ${resolvedFont} !important;\n`;
   cssVariables += '}\n';
 
-  // 4. Directional Styling (RTL vs LTR)
-  const dirRules = isRtl
-    ? `
+  // 4. Directional Styling (LTR Priority, Auto BiDi, and RTL)
+  let dirRules = '';
+
+  if (options.direction === 'rtl') {
+    dirRules = `
 /* === RTL BASE RULES === */
 body#tinymce, body, #rendered-md {
   direction: rtl !important;
@@ -147,7 +148,7 @@ body#tinymce td, #rendered-md td {
   unicode-bidi: plaintext !important;
 }
 
-/* === RTL ENCLOSED [dir="ltr"] SUPPORT === */
+/* RTL [dir="ltr"] container override */
 #rendered-md [dir="ltr"], body#tinymce [dir="ltr"],
 #rendered-md [dir="ltr"] :is(h1, h2, h3, h4, h5, h6, p, li, blockquote, dt, dd),
 body#tinymce [dir="ltr"] :is(h1, h2, h3, h4, h5, h6, p, li, blockquote, dt, dd) {
@@ -183,8 +184,41 @@ body#tinymce [dir="ltr"] :is(h1, h2, h3, h4, h5, h6, p, li, blockquote, dt, dd) 
 #rendered-md [dir="ltr"] table :is(th, td), body#tinymce [dir="ltr"] table :is(th, td) {
   text-align: left !important;
 }
-`
-    : `
+`;
+  } else if (options.direction === 'auto') {
+    // AUTO-BIDI: Uses Unicode Bidirectional Algorithm & Logical Properties
+    dirRules = `
+/* === AUTO-BIDI RULES === */
+body#tinymce, body, #rendered-md {
+  direction: ltr !important;
+  text-align: start !important;
+}
+#rendered-md :is(p, h1, h2, h3, h4, h5, h6, li, blockquote, dt, dd) {
+  unicode-bidi: plaintext !important;
+  text-align: start !important;
+}
+body#tinymce h2, #rendered-md h2 {
+  border-inline-start: 5px solid var(--od-h2) !important;
+  padding-inline-start: 12px !important;
+}
+body#tinymce ul, body#tinymce ol, #rendered-md ul, #rendered-md ol {
+  padding-inline-start: 2em !important;
+}
+body#tinymce blockquote, #rendered-md blockquote {
+  border-inline-start: 4px solid var(--od-comment) !important;
+  padding-inline-start: 16px !important;
+}
+body#tinymce th, #rendered-md th,
+body#tinymce td, #rendered-md td {
+  text-align: start !important;
+}
+.mermaid .nodeLabel, .mermaid .edgeLabel, .mermaid .label, .mermaid text {
+  unicode-bidi: plaintext !important;
+}
+`;
+  } else {
+    // LTR PRIORITY (Default for International Users)
+    dirRules = `
 /* === LTR BASE RULES === */
 body#tinymce, body, #rendered-md {
   direction: ltr !important;
@@ -216,6 +250,7 @@ body#tinymce td, #rendered-md td {
   direction: ltr !important;
 }
 `;
+  }
 
   // 5. Reading Width (Focus Mode)
   let contentWidthCss = '';
@@ -225,9 +260,8 @@ body#tinymce td, #rendered-md td {
     contentWidthCss = `max-width: 920px !important; margin: 0 auto !important;`;
   }
 
-  // 6. Complete Core Styles with the 4 Missing Essentials
+  // 6. Complete Core Styles
   const coreStyles = `
-/* Universal Box-Sizing: Prevents Any Document-Level Horizontal Overflow */
 *, *::before, *::after {
   box-sizing: border-box !important;
 }
@@ -257,7 +291,6 @@ body#tinymce, body, #rendered-md {
   ${contentWidthCss}
 }
 
-/* Headings */
 body#tinymce h1, #rendered-md h1 {
   color: var(--od-h1) !important;
   font-size: 1.75em !important;
@@ -289,9 +322,6 @@ body#tinymce h6, #rendered-md h6 { color: var(--od-h6) !important; font-size: 1.
   font-weight: bold !important;
 }
 
-/* =================================================================
-   ESSENTIAL 1: Intelligent Checklist & Completed Task Styling
-   ================================================================= */
 .md-checkbox input[type="checkbox"] {
   vertical-align: middle !important;
   cursor: pointer !important;
@@ -310,9 +340,6 @@ body#tinymce li:has(input[type="checkbox"]:checked) code {
   text-decoration: none !important;
 }
 
-/* =================================================================
-   ESSENTIAL 2: Smart Image Bounds & Soft Elevation (No 4K Blowouts)
-   ================================================================= */
 #rendered-md img,
 body#tinymce img {
   max-width: 100% !important;
@@ -325,9 +352,6 @@ body#tinymce img {
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08) !important;
 }
 
-/* =================================================================
-   ESSENTIAL 3: Internal Note Links vs External Links Distinction
-   ================================================================= */
 body#tinymce a, #rendered-md a {
   color: var(--od-link) !important;
   text-decoration: none !important;
@@ -338,7 +362,6 @@ body#tinymce a:hover, #rendered-md a:hover {
   text-decoration: underline !important;
 }
 
-/* Cross-Note Link (Joplin Note Link Syntax: ':/id') */
 #rendered-md a[href^=":/"], body#tinymce a[href^=":/"] {
   font-weight: 600 !important;
   border-bottom: 1.5px dashed var(--od-link) !important;
@@ -348,7 +371,6 @@ body#tinymce a:hover, #rendered-md a:hover {
   border-bottom-style: solid !important;
 }
 
-/* Blockquotes & Callouts */
 body#tinymce blockquote, #rendered-md blockquote {
   padding: 10px 16px !important;
   margin: 18px 0 !important;
@@ -374,7 +396,6 @@ kbd {
   box-shadow: 0 1px 0 rgba(0,0,0,0.2) !important;
 }
 
-/* Joplin Source Cleanup */
 body#tinymce .joplin-source,
 #rendered-md .joplin-source,
 pre.joplin-source,
@@ -387,7 +408,6 @@ div.joplin-editable > pre.joplin-source {
   border: none !important;
 }
 
-/* Inline Code & Preserved Tree Blocks */
 body#tinymce code, #rendered-md code {
   font-family: ${resolvedCodeFont} !important;
   background-color: var(--od-code-bg) !important;
@@ -444,7 +464,6 @@ body#tinymce :is(p, li) code, #rendered-md :is(p, li) code {
   word-break: break-word !important;
 }
 
-/* Tables (Isolated Horizontal Scroll & Contrast Fix) */
 body#tinymce table, #rendered-md table {
   border-collapse: collapse !important;
   width: 100% !important;
@@ -483,7 +502,6 @@ body#tinymce table td :not(code):not(pre):not(a) {
 body#tinymce tr:nth-child(even), #rendered-md tr:nth-child(even) { background-color: var(--od-table-even) !important; }
 body#tinymce tr:nth-child(odd), #rendered-md tr:nth-child(odd) { background-color: var(--od-table-odd) !important; }
 
-/* Mermaid Diagrams (Safe Centering & Container Containment) */
 #rendered-md .mermaid, #rendered-md div.mermaid, #rendered-md pre.mermaid,
 body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   display: block !important;
@@ -545,7 +563,6 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   padding: 1px 6px !important;
 }
 
-/* KaTeX Equations */
 .katex-display {
   max-width: 100% !important;
   overflow-x: auto !important;
@@ -555,9 +572,6 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   padding: 6px 0 !important;
 }
 
-/* =================================================================
-   ESSENTIAL 4: Joplin Native Table of Contents ([[toc]]) & Footnotes
-   ================================================================= */
 #rendered-md .table-of-contents, body#tinymce .table-of-contents {
   background-color: var(--od-bg-alt) !important;
   border: 1px solid var(--od-border) !important;
@@ -579,7 +593,6 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   color: var(--od-comment) !important;
 }
 
-/* Mobile Responsiveness (< 768px) */
 @media screen and (max-width: 768px) {
   body#tinymce, body, #rendered-md {
     font-size: ${options.fontSize} !important;
@@ -623,7 +636,6 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   }
 }
 
-/* Clean Print & PDF Export */
 @media print {
   body, #rendered-md { background-color: #ffffff !important; color: #000000 !important; font-size: 14px !important; }
   #rendered-md .mermaid, body#tinymce .mermaid {
@@ -635,7 +647,6 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   h1, h2, h3, h4, h5, h6 { page-break-after: avoid !important; break-after: avoid !important; color: #000000 !important; }
 }
 
-/* Custom High-Contrast Scrollbars */
 ::-webkit-scrollbar { width: 8px !important; height: 8px !important; }
 ::-webkit-scrollbar-track { background: var(--od-scrollbar-track) !important; border-radius: 4px !important; }
 ::-webkit-scrollbar-thumb { background: var(--od-scrollbar-thumb) !important; border-radius: 4px !important; }
