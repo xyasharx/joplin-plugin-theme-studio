@@ -10,6 +10,7 @@ export interface StyleOptions {
   fontSize: string;
   lineHeight: string;
   contentMaxWidth: string;
+  pdfExportStyle: string;
 }
 
 export function buildThemeCss(options: StyleOptions): string {
@@ -98,7 +99,6 @@ export function buildThemeCss(options: StyleOptions): string {
 
   if (options.direction === 'rtl') {
     dirRules = `
-/* === RTL BASE RULES === */
 body#tinymce, body, #rendered-md {
   direction: rtl !important;
   text-align: right !important;
@@ -148,7 +148,6 @@ body#tinymce td, #rendered-md td {
   unicode-bidi: plaintext !important;
 }
 
-/* RTL [dir="ltr"] container override */
 #rendered-md [dir="ltr"], body#tinymce [dir="ltr"],
 #rendered-md [dir="ltr"] :is(h1, h2, h3, h4, h5, h6, p, li, blockquote, dt, dd),
 body#tinymce [dir="ltr"] :is(h1, h2, h3, h4, h5, h6, p, li, blockquote, dt, dd) {
@@ -186,9 +185,7 @@ body#tinymce [dir="ltr"] :is(h1, h2, h3, h4, h5, h6, p, li, blockquote, dt, dd) 
 }
 `;
   } else if (options.direction === 'auto') {
-    // AUTO-BIDI: Uses Unicode Bidirectional Algorithm & Logical Properties
     dirRules = `
-/* === AUTO-BIDI RULES === */
 body#tinymce, body, #rendered-md {
   direction: ltr !important;
   text-align: start !important;
@@ -217,9 +214,7 @@ body#tinymce td, #rendered-md td {
 }
 `;
   } else {
-    // LTR PRIORITY (Default for International Users)
     dirRules = `
-/* === LTR BASE RULES === */
 body#tinymce, body, #rendered-md {
   direction: ltr !important;
   text-align: left !important;
@@ -260,7 +255,12 @@ body#tinymce td, #rendered-md td {
     contentWidthCss = `max-width: 920px !important; margin: 0 auto !important;`;
   }
 
-  // 6. Complete Core Styles
+  // 6. PDF Print Styling Logic
+  const isPaperMode = options.pdfExportStyle === 'paper';
+  const printBodyBg = isPaperMode ? '#ffffff' : 'var(--od-bg)';
+  const printBodyFg = isPaperMode ? '#1e2227' : 'var(--od-fg)';
+
+  // 7. Complete Core Styles
   const coreStyles = `
 *, *::before, *::after {
   box-sizing: border-box !important;
@@ -636,15 +636,135 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   }
 }
 
+/* =================================================================
+   FLAWLESS PDF & PRINT EXPORT ENGINE
+   Matches screen layout with exact colors, zero table cropping & wrapped code
+   ================================================================= */
+@page {
+  margin: 12mm 15mm 12mm 15mm;
+  size: auto;
+}
+
 @media print {
-  body, #rendered-md { background-color: #ffffff !important; color: #000000 !important; font-size: 14px !important; }
-  #rendered-md .mermaid, body#tinymce .mermaid {
-    border: none !important;
-    background: transparent !important;
+  *, *::before, *::after, html, body, #rendered-md {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body, #rendered-md {
+    background-color: ${printBodyBg} !important;
+    color: ${printBodyFg} !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 14px !important;
+    line-height: ${options.lineHeight} !important;
+  }
+
+  /* Joplin Exported Note Title Styling */
+  .exported-note-title {
+    color: var(--od-h1) !important;
+    font-family: ${resolvedFont} !important;
+    font-size: 1.9em !important;
+    font-weight: 800 !important;
+    border-bottom: 2px solid var(--od-h1) !important;
+    padding-bottom: 8px !important;
+    margin-bottom: 24px !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  /* Headings: Retain theme colors & prevent orphan page splits */
+  body#tinymce h1, #rendered-md h1 { color: var(--od-h1) !important; page-break-after: avoid !important; break-after: avoid !important; }
+  body#tinymce h2, #rendered-md h2 { color: var(--od-h2) !important; page-break-after: avoid !important; break-after: avoid !important; }
+  body#tinymce h3, #rendered-md h3 { color: var(--od-h3) !important; page-break-after: avoid !important; break-after: avoid !important; }
+  body#tinymce h4, #rendered-md h4 { color: var(--od-h4) !important; page-break-after: avoid !important; break-after: avoid !important; }
+  body#tinymce h5, #rendered-md h5 { color: var(--od-h5) !important; page-break-after: avoid !important; break-after: avoid !important; }
+  body#tinymce h6, #rendered-md h6 { color: var(--od-h6) !important; page-break-after: avoid !important; break-after: avoid !important; }
+
+  /* Tables: Convert from scrollable blocks to full printable tables (No Cropping!) */
+  body#tinymce table, #rendered-md table {
+    display: table !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: auto !important;
+    overflow: visible !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+    margin: 16px 0 !important;
+  }
+
+  body#tinymce tr, #rendered-md tr {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
-  h1, h2, h3, h4, h5, h6 { page-break-after: avoid !important; break-after: avoid !important; color: #000000 !important; }
+
+  body#tinymce th, #rendered-md th,
+  body#tinymce td, #rendered-md td {
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    padding: 6px 10px !important;
+  }
+
+  /* Code Blocks: Wrap long lines so nothing runs off the page */
+  body#tinymce pre:not(.mermaid):not(.joplin-source),
+  #rendered-md pre:not(.mermaid):not(.joplin-source) {
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    overflow: visible !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    background-color: var(--od-pre-bg) !important;
+    border: 1px solid var(--od-pre-border) !important;
+    padding: 12px !important;
+    margin: 14px 0 !important;
+  }
+
+  body#tinymce pre:not(.mermaid):not(.joplin-source) code,
+  #rendered-md pre:not(.mermaid):not(.joplin-source) code {
+    white-space: pre-wrap !important;
+    display: block !important;
+    min-width: 100% !important;
+  }
+
+  /* Diagrams, Images, Blockquotes & Formulas */
+  #rendered-md .mermaid, body#tinymce .mermaid {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    overflow: visible !important;
+    background-color: var(--od-mermaid-bg) !important;
+    border: 1px solid var(--od-mermaid-border) !important;
+    padding: 16px 10px !important;
+    margin: 18px auto !important;
+  }
+
+  #rendered-md .mermaid svg, body#tinymce .mermaid svg {
+    max-width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    margin: 0 auto !important;
+  }
+
+  #rendered-md img, body#tinymce img {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  body#tinymce blockquote, #rendered-md blockquote {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    background-color: var(--od-bg-alt) !important;
+  }
+
+  .katex-display {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    overflow: visible !important;
+  }
 }
 
 ::-webkit-scrollbar { width: 8px !important; height: 8px !important; }
