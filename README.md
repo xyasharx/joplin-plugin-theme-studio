@@ -4,23 +4,44 @@
 [![Platforms](https://img.shields.io/badge/Platforms-Desktop%20%7C%20Mobile-green)](#-installation)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> **Theme Studio** is an all-in-one visual engine for Joplin. Switch instantly between iconic color schemes (Tokyo Night, Everforest, Catppuccin, Nord, Dracula, Gruvbox, Atom One) with full **RTL/LTR typography**, mobile responsiveness, and polished diagram rendering—**without ever touching `userstyle.css` again.**
+> **Theme Studio** is an all-in-one visual and typography engine for Joplin. Switch instantly between iconic color schemes (Tokyo Night, Everforest, Catppuccin, Nord, Dracula, Gruvbox, Atom One) with **smart BiDi auto-detection**, **international web fonts**, **high-fidelity PDF export**, and responsive mobile rendering—**without ever touching `userstyle.css` again.**
 
 ---
 
-## ✨ Why Theme Studio?
+## ✨ Features
 
-Tired of copying CSS snippets, broken bullet points in RTL, unreadable white text in light-mode tables, or clipped Mermaid diagrams? 
+- 🔄 **One-Click Theme Switching:** Switch between 12+ iconic dark and light palettes on the fly.
+- 🌍 **Smart Locale Detection & International Fonts:** Automatically detects Joplin's interface language on launch (defaults to LTR & Inter globally, or RTL & Vazirmatn for Persian/Arabic/Hebrew). Loads web fonts on the fly via CDN—ideal for mobile where system fonts cannot be installed.
+- 🔀 **Auto-Detect BiDi & LTR Priority:** Supports pure LTR, pure RTL, or a new **Auto-Detect (Per-Paragraph BiDi)** mode that aligns each paragraph naturally according to its language.
+- 📄 **High-Fidelity PDF & Print Engine:** Exact color and background preservation (`print-color-adjust: exact`), automatic table column wrapping (no cropped tables or printed scrollbars), wrapped code blocks (`pre-wrap`), and smart page-break isolation.
+- 📱 **Mobile & Desktop Ready:** Works seamlessly across Joplin Desktop (Windows, macOS, Linux) and Joplin Mobile (Android/iOS) with adaptive font scaling and zero horizontal viewport sway.
+- 📊 **Contained Mermaid Diagrams:** Centered flowcharts, rounded nodes, transparent label backgrounds, and container-isolated horizontal scrolling.
+- 💻 **ASCII-Safe Code Blocks:** Strict horizontal scroll isolation so folder tree structures and terminal logs never break or wrap unexpectedly on screen.
+- 📋 **Contrast & Font-Fixed Tables:** Resolves Joplin's light-mode unreadable text bug and ensures tables fully adopt your chosen typography preset.
+- ✅ **Interactive Checklist Styling:** Checked to-do items (`- [x]`) smoothly dim to 55% opacity with an automatic strikethrough.
+- 🖼️ **Smart Image Boundaries:** Pasted screenshots and retina graphics are auto-centered and bounded (`max-height: 520px`) to prevent them from dominating your notes.
+- 🔗 **Cross-Note Link Distinction:** Internal Joplin note links (`:/<id>`) feature a distinct dashed accent underline to stand out from external web URLs.
+- 📖 **Focus Reading Width:** Center and constrain line lengths on ultra-wide monitors (`Compact 760px`, `Comfortable 920px`, or `Full Width`).
 
-**Theme Studio** moves all custom styling into a single, configurable plugin:
-- 🔄 **One-Click Palette Switching:** Change themes dynamically from Joplin's settings.
-- 🌍 **Native RTL & Bidirectional Engine:** Flawless right-to-left alignment, with full bullet marker and border fixes.
-- 🔀 **Isolated LTR Blocks:** Mix English and RTL text seamlessly using `<div dir="ltr">...</div>`.
-- 📱 **Mobile & Desktop Ready:** Works across Joplin Desktop (Windows, macOS, Linux) and Joplin Mobile (Android/iOS).
-- 📊 **Enhanced Mermaid Diagrams:** Centered flowcharts, rounded nodes, transparent label backgrounds, and horizontal scrollbars.
-- 💻 **ASCII-Preserved Code Blocks:** Horizontal scrolling prevents line wrapping from breaking folder trees or terminal outputs.
-- 📋 **Fixed Table Contrast:** Resolves Joplin's light-mode unreadable table cell bug and adds responsive table scrolling.
-- 🖨️ **Print & PDF Optimization:** Auto-strips dark backgrounds and formats headings cleanly for clean PDF exports.
+---
+
+## 🌍 Built-In International Font Presets
+
+Mobile devices running Joplin typically cannot install local system fonts. Theme Studio includes built-in web fonts served on the fly via CDN:
+
+| Language / Script | Font Preset | Description |
+| :--- | :--- | :--- |
+| **Global / Latin / European / Cyrillic** | **Inter** *(Default)* | The gold standard for modern UI and long-form reading |
+| **Clean Modern Sans** | **Roboto** | Google's versatile, high-legibility sans-serif |
+| **Persian / Arabic / Kurdish / Urdu** | **Vazirmatn** | Modern, beautiful, and crisp Arabic-script typography |
+| **Standard Arabic** | **Noto Sans Arabic** | Modern clean Arabic typeface from Google |
+| **Simplified Chinese (CJK)** | **Noto Sans SC** | High-contrast Chinese typography |
+| **Japanese (CJK)** | **Noto Sans JP** | Balanced Japanese typography |
+| **Hebrew** | **Heebo** | Clean Hebrew and Latin typography |
+| **Devanagari (Hindi / Sanskrit / Marathi)** | **Noto Sans Devanagari** | Complete Devanagari script support |
+| **Editorial & Book Reading** | **Lora** | Classic serif optimized for long reading sessions |
+| **Code & Monospace** | **Fira Code** / **JetBrains Mono** | Modern developer monospace typefaces |
+| **Native System** | **System Default** | Zero-network overhead using your OS native font stack |
 
 ---
 
@@ -69,24 +90,28 @@ Tired of copying CSS snippets, broken bullet points in RTL, unreadable white tex
 
 ---
 
-## ⚙️ Configuration
+## ⚙️ Configuration Reference
 
-Once installed, open **Tools > Options > Theme & Typography**:
+Open **Tools > Options > Theme Studio** (on Mobile: **Configuration > Plugins > Theme Studio**):
 
-| Setting | Options / Description |
-| :--- | :--- |
-| **Color Theme** | Select any of the 12+ built-in palettes. |
-| **Layout Direction** | Choose **RTL** (Persian/Arabic) or **LTR** (English/Latin). |
-| **Primary Font Stack** | Customize your main reading font (defaults to *Vazirmatn* for RTL). |
-| **Monospace Code Font** | Customize your code font (*Cascadia Code*, *Fira Code*, *JetBrains Mono*). |
-| **Base Font Size** | Adjust font scaling (e.g., `15px`, `16px`, `17px`). |
-| **Line Height** | Adjust line spacing for reading comfort (e.g., `1.7`, `1.8`). |
+| Setting | Options / Description | Default |
+| :--- | :--- | :--- |
+| **Color Theme** | Select any of the 12+ built-in palettes. | `Atom One Dark` |
+| **Layout Direction** | `LTR (Global)`, `Auto-Detect (Per-Paragraph BiDi)`, or `RTL`. | Auto-detected |
+| **International Font Preset** | Choose from 10+ web fonts (Inter, Roboto, Vazirmatn, Noto Arabic, Noto CJK, Heebo, Devanagari, Lora, System, Custom). | Auto-detected |
+| **Custom Font Stack** | Custom font-family string (active only when *Custom Font Stack* is chosen above). | System stack |
+| **Code Font Preset** | `Fira Code`, `JetBrains Mono`, `System Monospace`, or `Custom`. | `Fira Code` |
+| **Custom Code Font Stack** | Custom monospace stack (active only when *Custom Code Font* is chosen above). | Cascadia / Consolas |
+| **Font Size** | Base font size (e.g., `14px`, `16px`, `18px`, `20px`). Fully responsive on mobile. | `16px` |
+| **Line Height** | Body line spacing (e.g., `1.6`, `1.75`, `1.9`). | `1.75` |
+| **Reading Width (Focus Mode)** | `Full Width (100%)`, `Comfortable (920px Centered)`, or `Compact (760px Centered)`. | `Full Width` |
+| **PDF Export Appearance** | `Exact Match` (identical colors and backgrounds) or `Paper Friendly` (white background with theme accents). | `Exact Match` |
 
 ---
 
 ## 💡 Mixed-Language (LTR in RTL) Guide
 
-When your layout direction is set to **RTL**, you can insert English text, code explanations, or quotes without layout breakage by wrapping them in `<div dir="ltr">`:
+If your note direction is set to **RTL**, you can embed English paragraphs, code summaries, or quotes with left-to-right alignment using `<div dir="ltr">`:
 
 ```html
 <div dir="ltr">
@@ -100,11 +125,13 @@ When your layout direction is set to **RTL**, you can insert English text, code 
 </div>
 ```
 
+*(Alternatively, switch **Layout Direction** to `Auto-Detect (Per-Paragraph BiDi)` to let the plugin align each paragraph automatically without manual HTML tags).*
+
 ---
 
 ## 🛠️ Development & Building
 
-To run or modify Theme Studio locally:
+To build Theme Studio locally:
 
 1. **Clone the repo:**
    ```bash
@@ -117,11 +144,11 @@ To run or modify Theme Studio locally:
    npm install
    ```
 
-3. **Build the plugin package:**
+3. **Build the plugin bundle:**
    ```bash
    npm run dist
    ```
-   The compiled `.jpl` bundle will be created inside the `publish/` directory.
+   The compiled `.jpl` archive will be created inside the `publish/` directory.
 
 ---
 
