@@ -136,7 +136,7 @@ body#tinymce ul ul, body#tinymce ol ol, body#tinymce ul ol, body#tinymce ol ul {
 body#tinymce blockquote, #rendered-md blockquote {
   direction: rtl !important;
   text-align: right !important;
-  border-right: 4px solid var(--od-comment) !important;
+  border-right: 1px solid var(--od-comment) !important;
   border-left: 0 !important;
 }
 body#tinymce th, #rendered-md th,
@@ -234,7 +234,7 @@ body#tinymce ul, body#tinymce ol, #rendered-md ul, #rendered-md ol {
   margin-left: 0 !important;
 }
 body#tinymce blockquote, #rendered-md blockquote {
-  border-left: 4px solid var(--od-comment) !important;
+  border-left: 1px solid var(--od-comment) !important;
   border-right: 0 !important;
 }
 body#tinymce th, #rendered-md th,
@@ -378,8 +378,8 @@ body#tinymce a:hover, #rendered-md a:hover {
 body#tinymce blockquote, #rendered-md blockquote {
   padding: 10px 16px !important;
   margin: 18px 0 !important;
-  background: var(--od-bg-alt) !important;
-  border-radius: 4px !important;
+  /* background: var(--od-bg-alt) !important; */
+  /* border-radius: 4px !important; */
   color: var(--od-fg) !important;
 }
 
