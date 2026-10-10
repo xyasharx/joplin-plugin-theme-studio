@@ -126,16 +126,22 @@ export function buildEditorCss(options: StyleOptions): string {
 ${fontImport}
 ${cssVariables}
 
-/* High-specificity override for CodeMirror 6 & CodeMirror 5 editor background */
+/* Outer editor container & scroller get the theme background */
 html body div.cm-editor,
 html body div.cm-editor .cm-scroller,
-html body div.cm-editor .cm-content,
 html body div.CodeMirror,
-html body div.CodeMirror-lines,
 html body .r-markdown-editor {
   background-color: var(--od-bg) !important;
   color: var(--od-fg) !important;
   font-family: ${resolvedFont} !important;
+}
+
+/* Content and lines MUST remain transparent so CodeMirror's selection layer is visible */
+.cm-content,
+.cm-line,
+.CodeMirror-lines,
+.CodeMirror-sizer {
+  background-color: transparent !important;
 }
 
 .cm-content, .CodeMirror-lines {
@@ -165,7 +171,13 @@ ${dirCss}
 .CodeMirror-cursor {
   border-left: 2px solid var(--od-link) !important;
 }
-.cm-selectionBackground, .CodeMirror-selected, ::selection {
+.cm-selectionBackground,
+.cm-editor .cm-selectionLayer .cm-selectionBackground,
+.cm-content ::selection,
+.cm-line ::selection,
+.CodeMirror-selected,
+.CodeMirror-focused .CodeMirror-selected,
+::selection {
   background-color: var(--od-selection) !important;
 }
 
