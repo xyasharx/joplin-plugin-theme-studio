@@ -1,5 +1,6 @@
 {
   "extraScripts": [
-    "markdownTheme.ts"
+    "markdownTheme.ts",
+    "codeMirrorTheme.ts"
   ]
 }
