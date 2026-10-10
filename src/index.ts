@@ -1,9 +1,9 @@
 import joplin from 'api';
 import { ContentScriptType, SettingItemType } from 'api/types';
+import { buildEditorCss, StyleOptions } from './styles';
 
 joplin.plugins.register({
   onStart: async function () {
-    // 1. Detect user's Joplin language to set smart, non-intrusive defaults
     let defaultDirection = 'ltr';
     let defaultFontPreset = 'inter';
 
@@ -19,13 +19,11 @@ joplin.plugins.register({
       defaultFontPreset = 'inter';
     }
 
-    // 2. Register Settings Section
     await joplin.settings.registerSection('themeStudioSection', {
       label: 'Theme Studio',
       iconName: 'fas fa-palette',
     });
 
-    // 3. Register Settings with PDF Layout Fidelity
     await joplin.settings.registerSettings({
       'theme': {
         value: 'atom-one-dark',
@@ -63,6 +61,14 @@ joplin.plugins.register({
           'auto': 'Auto-Detect (Per-Paragraph BiDi)',
           'rtl': 'Right-to-Left (RTL - Persian / Arabic / Hebrew)',
         },
+      },
+      'enableEditorTheme': {
+        value: true,
+        type: SettingItemType.Bool,
+        section: 'themeStudioSection',
+        public: true,
+        label: 'Apply Theme to Markdown Editor',
+        description: 'Styles the CodeMirror editor (background, colors, line numbers, headings) to match the viewer.',
       },
       'fontPreset': {
         value: defaultFontPreset,
@@ -162,7 +168,40 @@ joplin.plugins.register({
       },
     });
 
-    // 4. Register Markdown-it content script
+    async function getCurrentOptions(): Promise<StyleOptions> {
+      return {
+        themeKey: await joplin.settings.value('theme'),
+        direction: await joplin.settings.value('direction'),
+        fontPreset: await joplin.settings.value('fontPreset'),
+        fontFamily: await joplin.settings.value('fontFamily'),
+        codeFontPreset: await joplin.settings.value('codeFontPreset'),
+        codeFont: await joplin.settings.value('codeFont'),
+        fontSize: await joplin.settings.value('fontSize'),
+        lineHeight: await joplin.settings.value('lineHeight'),
+        contentMaxWidth: await joplin.settings.value('contentMaxWidth'),
+        pdfExportStyle: await joplin.settings.value('pdfExportStyle'),
+      };
+    }
+
+    // 1. Register CodeMirror Editor Content Script
+    await joplin.contentScripts.register(
+      ContentScriptType.CodeMirrorPlugin,
+      'themeStudioCodeMirror',
+      './codeMirrorTheme.js'
+    );
+
+    // 2. Respond to CodeMirror's style request
+    await joplin.contentScripts.onMessage('themeStudioCodeMirror', async (message: any) => {
+      if (message && message.type === 'getEditorStyles') {
+        const enabled = await joplin.settings.value('enableEditorTheme');
+        if (!enabled) return '';
+        const options = await getCurrentOptions();
+        return buildEditorCss(options);
+      }
+      return null;
+    });
+
+    // 3. Register Markdown Viewer Content Script
     await joplin.contentScripts.register(
       ContentScriptType.MarkdownItPlugin,
       'themeStudioMarkdownIt',
