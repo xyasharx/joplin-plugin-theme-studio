@@ -233,10 +233,12 @@ body#tinymce ul ul, body#tinymce ol ol, body#tinymce ul ol, body#tinymce ol ul {
   padding-left: 0 !important;
 }
 .md-checkbox input[type="checkbox"] { margin-left: 8px !important; margin-right: 0 !important; }
+
+/* RTL Blockquotes: 1px Right Border & No Left Border */
 body#tinymce blockquote, #rendered-md blockquote {
   direction: rtl !important;
   text-align: right !important;
-  border-right: 4px solid var(--od-comment) !important;
+  border-right: 1px solid var(--od-comment) !important;
   border-left: 0 !important;
 }
 body#tinymce th, #rendered-md th, body#tinymce td, #rendered-md td { text-align: right !important; }
@@ -259,7 +261,7 @@ body#tinymce [dir="ltr"] :is(h1, h2, h3, h4, h5, h6, p, li, blockquote, dt, dd) 
 }
 #rendered-md [dir="ltr"] blockquote, body#tinymce [dir="ltr"] blockquote {
   border-right: none !important;
-  border-left: 4px solid var(--od-comment) !important;
+  border-left: 1px solid var(--od-comment) !important;
   padding-left: 16px !important;
   padding-right: 12px !important;
 }
@@ -288,7 +290,13 @@ body#tinymce, body, #rendered-md { direction: ltr !important; text-align: start 
 }
 body#tinymce h2, #rendered-md h2 { border-inline-start: 5px solid var(--od-h2) !important; padding-inline-start: 12px !important; }
 body#tinymce ul, body#tinymce ol, #rendered-md ul, #rendered-md ol { padding-inline-start: 2em !important; }
-body#tinymce blockquote, #rendered-md blockquote { border-inline-start: 4px solid var(--od-comment) !important; padding-inline-start: 16px !important; }
+
+/* Auto-BiDi Blockquotes: 1px Border on Dynamic Inline Start */
+body#tinymce blockquote, #rendered-md blockquote {
+  border-inline-start: 1px solid var(--od-comment) !important;
+  border-inline-end: 0 !important;
+  padding-inline-start: 16px !important;
+}
 body#tinymce th, #rendered-md th, body#tinymce td, #rendered-md td { text-align: start !important; }
 .mermaid .nodeLabel, .mermaid .edgeLabel, .mermaid .label, .mermaid text { unicode-bidi: plaintext !important; }
 `;
@@ -301,9 +309,14 @@ body#tinymce h2, #rendered-md h2 {
   padding-left: 12px !important;
   padding-right: 0 !important;
 }
-body#tinymce ul, body#tinymce ol, #rendered-md ul, #rendered-md ol { padding-left: 2em !important; padding-right: 0 !important; }
+body#tinymce ul, body#tinymce ol, #rendered-md ul, #rendered-md ol { padding-left: 2em !important; }
 .md-checkbox input[type="checkbox"] { margin-right: 8px !important; margin-left: 0 !important; }
-body#tinymce blockquote, #rendered-md blockquote { border-left: 4px solid var(--od-comment) !important; border-right: 0 !important; }
+
+/* LTR Blockquotes: 1px Left Border & No Right Border */
+body#tinymce blockquote, #rendered-md blockquote {
+  border-left: 1px solid var(--od-comment) !important;
+  border-right: 0 !important;
+}
 body#tinymce th, #rendered-md th, body#tinymce td, #rendered-md td { text-align: left !important; }
 .mermaid .nodeLabel, .mermaid .edgeLabel, .mermaid .label, .mermaid text { direction: ltr !important; }
 `;
@@ -394,11 +407,14 @@ body#tinymce a:hover, #rendered-md a:hover { color: var(--od-link-hover) !import
 }
 #rendered-md a[href^=":/"]:hover, body#tinymce a[href^=":/"]:hover { border-bottom-style: solid !important; }
 
+/* =================================================================
+   BLOCKQUOTES: NEW CLEAN MINIMAL 1PX STYLE (NO BACKGROUND, NO RADIUS)
+   ================================================================= */
 body#tinymce blockquote, #rendered-md blockquote {
   padding: 10px 16px !important;
   margin: 18px 0 !important;
-  background: var(--od-bg-alt) !important;
-  border-radius: 4px !important;
+  background: transparent !important;
+  border-radius: 0 !important;
   color: var(--od-fg) !important;
 }
 
@@ -764,7 +780,7 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   body#tinymce blockquote, #rendered-md blockquote {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
-    background-color: var(--od-bg-alt) !important;
+    background-color: transparent !important;
   }
 
   .katex-display {
