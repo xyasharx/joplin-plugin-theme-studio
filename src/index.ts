@@ -190,13 +190,15 @@ joplin.plugins.register({
       './codeMirrorTheme.js'
     );
 
-    // 2. Respond to CodeMirror's style request
+    // 2. Respond to editor style requests (CodeMirror + TinyMCE Rich Text)
     await joplin.contentScripts.onMessage('themeStudioCodeMirror', async (message: any) => {
-      if (message && message.type === 'getEditorStyles') {
+      if (message && (message.type === 'getAllStyles' || message.type === 'getEditorStyles')) {
         const enabled = await joplin.settings.value('enableEditorTheme');
-        if (!enabled) return '';
         const options = await getCurrentOptions();
-        return buildEditorCss(options);
+        return {
+          editorCss: enabled ? buildEditorCss(options) : '',
+          viewerCss: buildThemeCss(options),
+        };
       }
       return null;
     });
