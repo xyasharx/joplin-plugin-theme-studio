@@ -190,6 +190,27 @@ ${dirCss}
   color: var(--od-code-fg) !important;
   border-radius: 3px !important;
 }
+
+/* TinyMCE (Rich Text Editor) Shell & Toolbar Theming */
+.tox-tinymce {
+  border: 1px solid var(--od-border) !important;
+  background-color: var(--od-bg) !important;
+}
+.tox .tox-toolbar,
+.tox .tox-toolbar__primary,
+.tox .tox-toolbar__overflow {
+  background-color: var(--od-bg-alt) !important;
+  border-bottom: 1px solid var(--od-border) !important;
+}
+.tox .tox-tbtn {
+  color: var(--od-fg) !important;
+}
+.tox .tox-tbtn:hover {
+  background-color: var(--od-selection) !important;
+}
+.tox .tox-tbtn svg {
+  fill: var(--od-fg) !important;
+}
 `;
 }
 
