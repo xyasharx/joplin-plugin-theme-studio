@@ -13,10 +13,7 @@ export interface StyleOptions {
   pdfExportStyle: string;
 }
 
-export function buildThemeCss(options: StyleOptions): string {
-  const selectedTheme = themes[options.themeKey] || themes['atom-one-dark'];
-
-  // 1. Resolve Primary Font Stack & CDN Imports
+function resolveFonts(options: StyleOptions) {
   let fontImport = '';
   let resolvedFont = options.fontFamily;
 
@@ -66,7 +63,6 @@ export function buildThemeCss(options: StyleOptions): string {
       break;
   }
 
-  // 2. Resolve Monospace Code Font Stack
   let resolvedCodeFont = options.codeFont;
   switch (options.codeFontPreset) {
     case 'fira-code':
@@ -86,7 +82,124 @@ export function buildThemeCss(options: StyleOptions): string {
       break;
   }
 
-  // 3. Theme CSS Variables
+  return { fontImport, resolvedFont, resolvedCodeFont };
+}
+
+// =================================================================
+// 1. MARKDOWN EDITOR (CodeMirror 6, CodeMirror 5 & TinyMCE) ENGINE
+// =================================================================
+export function buildEditorCss(options: StyleOptions): string {
+  const selectedTheme = themes[options.themeKey] || themes['atom-one-dark'];
+  const { fontImport, resolvedFont, resolvedCodeFont } = resolveFonts(options);
+
+  let cssVariables = ':root {\n';
+  for (const [key, value] of Object.entries(selectedTheme.variables)) {
+    cssVariables += `  ${key}: ${value};\n`;
+  }
+  cssVariables += '}\n';
+
+  let dirCss = '';
+  if (options.direction === 'rtl') {
+    dirCss = `
+      .cm-content, .CodeMirror-lines, body#tinymce {
+        direction: rtl !important;
+        text-align: right !important;
+      }
+    `;
+  } else if (options.direction === 'auto') {
+    dirCss = `
+      .cm-content, .CodeMirror-lines, body#tinymce {
+        unicode-bidi: plaintext !important;
+        text-align: start !important;
+      }
+    `;
+  } else {
+    dirCss = `
+      .cm-content, .CodeMirror-lines, body#tinymce {
+        direction: ltr !important;
+        text-align: left !important;
+      }
+    `;
+  }
+
+  return `
+${fontImport}
+${cssVariables}
+
+/* High-specificity override for CodeMirror 6 & CodeMirror 5 editor background */
+html body div.cm-editor,
+html body div.cm-editor .cm-scroller,
+html body div.cm-editor .cm-content,
+html body div.CodeMirror,
+html body div.CodeMirror-lines,
+html body .r-markdown-editor {
+  background-color: var(--od-bg) !important;
+  color: var(--od-fg) !important;
+  font-family: ${resolvedFont} !important;
+}
+
+.cm-content, .CodeMirror-lines {
+  font-size: ${options.fontSize} !important;
+  line-height: ${options.lineHeight} !important;
+  caret-color: var(--od-link) !important;
+}
+
+${dirCss}
+
+/* Gutters & Line Numbers */
+.cm-gutters, .CodeMirror-gutters {
+  background-color: var(--od-bg-alt) !important;
+  color: var(--od-comment) !important;
+  border-right: 1px solid var(--od-border) !important;
+}
+.cm-activeLineGutter {
+  background-color: var(--od-bg-alt) !important;
+  color: var(--od-h2) !important;
+  font-weight: bold !important;
+}
+.cm-activeLine, .CodeMirror-activeline-background {
+  background-color: rgba(127, 127, 127, 0.08) !important;
+}
+
+/* Cursor & Selection */
+.CodeMirror-cursor {
+  border-left: 2px solid var(--od-link) !important;
+}
+.cm-selectionBackground, .CodeMirror-selected, ::selection {
+  background-color: var(--od-selection) !important;
+}
+
+/* Syntax Highlighting in Markdown Editor */
+.cm-header-1, .tok-heading-1 { color: var(--od-h1) !important; font-weight: 700 !important; }
+.cm-header-2, .tok-heading-2 { color: var(--od-h2) !important; font-weight: 700 !important; }
+.cm-header-3, .tok-heading-3 { color: var(--od-h3) !important; font-weight: 600 !important; }
+.cm-header-4, .tok-heading-4 { color: var(--od-h4) !important; font-weight: 600 !important; }
+.cm-header-5, .tok-heading-5 { color: var(--od-h5) !important; }
+.cm-header-6, .tok-heading-6 { color: var(--od-h6) !important; }
+
+.cm-link, .tok-link { color: var(--od-link) !important; text-decoration: underline !important; }
+.cm-url, .tok-url { color: var(--od-link-hover) !important; }
+.cm-strong, .tok-strong { font-weight: bold !important; color: var(--od-fg) !important; }
+.cm-em, .tok-emphasis { font-style: italic !important; }
+.cm-comment, .tok-comment { color: var(--od-comment) !important; }
+.cm-quote, .tok-quote { color: var(--od-comment) !important; font-style: italic !important; }
+
+.tok-monospace, .cm-inline-code, .cm-variable-2 {
+  font-family: ${resolvedCodeFont} !important;
+  background-color: var(--od-code-bg) !important;
+  color: var(--od-code-fg) !important;
+  border-radius: 3px !important;
+}
+`;
+}
+
+// =================================================================
+// 2. MARKDOWN VIEWER & PDF RENDER ENGINE
+// =================================================================
+export function buildThemeCss(options: StyleOptions): string {
+  const selectedTheme = themes[options.themeKey] || themes['atom-one-dark'];
+  const { fontImport, resolvedFont, resolvedCodeFont } = resolveFonts(options);
+
   let cssVariables = ':root {\n';
   for (const [key, value] of Object.entries(selectedTheme.variables)) {
     cssVariables += `  ${key}: ${value};\n`;
@@ -94,15 +207,10 @@ export function buildThemeCss(options: StyleOptions): string {
   cssVariables += `  --mermaid-font-family: ${resolvedFont} !important;\n`;
   cssVariables += '}\n';
 
-  // 4. Directional Styling (LTR Priority, Auto BiDi, and RTL)
   let dirRules = '';
-
   if (options.direction === 'rtl') {
     dirRules = `
-body#tinymce, body, #rendered-md {
-  direction: rtl !important;
-  text-align: right !important;
-}
+body#tinymce, body, #rendered-md { direction: rtl !important; text-align: right !important; }
 body#tinymce h1, #rendered-md h1 { text-align: right !important; }
 body#tinymce h2, #rendered-md h2 {
   border-right: 5px solid var(--od-h2) !important;
@@ -111,38 +219,27 @@ body#tinymce h2, #rendered-md h2 {
   padding-left: 0 !important;
   text-align: right !important;
 }
-body#tinymce :is(h3, h4, h5, h6), #rendered-md :is(h3, h4, h5, h6) {
-  text-align: right !important;
-}
+body#tinymce :is(h3, h4, h5, h6), #rendered-md :is(h3, h4, h5, h6) { text-align: right !important; }
 body#tinymce ul, body#tinymce ol, #rendered-md ul, #rendered-md ol {
   direction: rtl !important;
   text-align: right !important;
   padding-right: 1.6em !important;
   padding-left: 0 !important;
 }
-#rendered-md li, body#tinymce li {
-  direction: rtl !important;
-  text-align: right !important;
-}
+#rendered-md li, body#tinymce li { direction: rtl !important; text-align: right !important; }
 #rendered-md ul ul, #rendered-md ol ol, #rendered-md ul ol, #rendered-md ol ul,
 body#tinymce ul ul, body#tinymce ol ol, body#tinymce ul ol, body#tinymce ol ul {
   padding-right: 1.4em !important;
   padding-left: 0 !important;
 }
-.md-checkbox input[type="checkbox"] {
-  margin-left: 8px !important;
-  margin-right: 0 !important;
-}
+.md-checkbox input[type="checkbox"] { margin-left: 8px !important; margin-right: 0 !important; }
 body#tinymce blockquote, #rendered-md blockquote {
   direction: rtl !important;
   text-align: right !important;
-  border-right: 1px solid var(--od-comment) !important;
+  border-right: 4px solid var(--od-comment) !important;
   border-left: 0 !important;
 }
-body#tinymce th, #rendered-md th,
-body#tinymce td, #rendered-md td {
-  text-align: right !important;
-}
+body#tinymce th, #rendered-md th, body#tinymce td, #rendered-md td { text-align: right !important; }
 .mermaid .nodeLabel, .mermaid .edgeLabel, .mermaid .label, .mermaid text {
   direction: rtl !important;
   unicode-bidi: plaintext !important;
@@ -180,74 +277,38 @@ body#tinymce [dir="ltr"] :is(h1, h2, h3, h4, h5, h6, p, li, blockquote, dt, dd) 
   margin-right: 8px !important;
   margin-left: 0 !important;
 }
-#rendered-md [dir="ltr"] table :is(th, td), body#tinymce [dir="ltr"] table :is(th, td) {
-  text-align: left !important;
-}
+#rendered-md [dir="ltr"] table :is(th, td), body#tinymce [dir="ltr"] table :is(th, td) { text-align: left !important; }
 `;
   } else if (options.direction === 'auto') {
     dirRules = `
-body#tinymce, body, #rendered-md {
-  direction: ltr !important;
-  text-align: start !important;
-}
+body#tinymce, body, #rendered-md { direction: ltr !important; text-align: start !important; }
 #rendered-md :is(p, h1, h2, h3, h4, h5, h6, li, blockquote, dt, dd) {
   unicode-bidi: plaintext !important;
   text-align: start !important;
 }
-body#tinymce h2, #rendered-md h2 {
-  border-inline-start: 5px solid var(--od-h2) !important;
-  padding-inline-start: 12px !important;
-}
-body#tinymce ul, body#tinymce ol, #rendered-md ul, #rendered-md ol {
-  padding-inline-start: 2em !important;
-}
-body#tinymce blockquote, #rendered-md blockquote {
-  border-inline-start: 4px solid var(--od-comment) !important;
-  padding-inline-start: 16px !important;
-}
-body#tinymce th, #rendered-md th,
-body#tinymce td, #rendered-md td {
-  text-align: start !important;
-}
-.mermaid .nodeLabel, .mermaid .edgeLabel, .mermaid .label, .mermaid text {
-  unicode-bidi: plaintext !important;
-}
+body#tinymce h2, #rendered-md h2 { border-inline-start: 5px solid var(--od-h2) !important; padding-inline-start: 12px !important; }
+body#tinymce ul, body#tinymce ol, #rendered-md ul, #rendered-md ol { padding-inline-start: 2em !important; }
+body#tinymce blockquote, #rendered-md blockquote { border-inline-start: 4px solid var(--od-comment) !important; padding-inline-start: 16px !important; }
+body#tinymce th, #rendered-md th, body#tinymce td, #rendered-md td { text-align: start !important; }
+.mermaid .nodeLabel, .mermaid .edgeLabel, .mermaid .label, .mermaid text { unicode-bidi: plaintext !important; }
 `;
   } else {
     dirRules = `
-body#tinymce, body, #rendered-md {
-  direction: ltr !important;
-  text-align: left !important;
-}
+body#tinymce, body, #rendered-md { direction: ltr !important; text-align: left !important; }
 body#tinymce h2, #rendered-md h2 {
   border-left: 5px solid var(--od-h2) !important;
   border-right: none !important;
   padding-left: 12px !important;
   padding-right: 0 !important;
 }
-body#tinymce ul, body#tinymce ol, #rendered-md ul, #rendered-md ol {
-  padding-left: 2em !important;
-  padding-right: 0 !important;
-}
-.md-checkbox input[type="checkbox"] {
-  margin-right: 8px !important;
-  margin-left: 0 !important;
-}
-body#tinymce blockquote, #rendered-md blockquote {
-  border-left: 1px solid var(--od-comment) !important;
-  border-right: 0 !important;
-}
-body#tinymce th, #rendered-md th,
-body#tinymce td, #rendered-md td {
-  text-align: left !important;
-}
-.mermaid .nodeLabel, .mermaid .edgeLabel, .mermaid .label, .mermaid text {
-  direction: ltr !important;
-}
+body#tinymce ul, body#tinymce ol, #rendered-md ul, #rendered-md ol { padding-left: 2em !important; padding-right: 0 !important; }
+.md-checkbox input[type="checkbox"] { margin-right: 8px !important; margin-left: 0 !important; }
+body#tinymce blockquote, #rendered-md blockquote { border-left: 4px solid var(--od-comment) !important; border-right: 0 !important; }
+body#tinymce th, #rendered-md th, body#tinymce td, #rendered-md td { text-align: left !important; }
+.mermaid .nodeLabel, .mermaid .edgeLabel, .mermaid .label, .mermaid text { direction: ltr !important; }
 `;
   }
 
-  // 5. Reading Width (Focus Mode)
   let contentWidthCss = '';
   if (options.contentMaxWidth === 'compact') {
     contentWidthCss = `max-width: 760px !important; margin: 0 auto !important;`;
@@ -255,25 +316,14 @@ body#tinymce td, #rendered-md td {
     contentWidthCss = `max-width: 920px !important; margin: 0 auto !important;`;
   }
 
-  // 6. PDF Print Styling Logic
   const isPaperMode = options.pdfExportStyle === 'paper';
   const printBodyBg = isPaperMode ? '#ffffff' : 'var(--od-bg)';
   const printBodyFg = isPaperMode ? '#1e2227' : 'var(--od-fg)';
 
-  // 7. Complete Core Styles
   const coreStyles = `
-*, *::before, *::after {
-  box-sizing: border-box !important;
-}
-
-html, body, #rendered-md {
-  max-width: 100% !important;
-  overflow-x: hidden !important;
-}
-
-::selection {
-  background-color: var(--od-selection) !important;
-}
+*, *::before, *::after { box-sizing: border-box !important; }
+html, body, #rendered-md { max-width: 100% !important; overflow-x: hidden !important; }
+::selection { background-color: var(--od-selection) !important; }
 
 body#tinymce, body, #rendered-md {
   font-family: ${resolvedFont} !important;
@@ -287,9 +337,7 @@ body#tinymce, body, #rendered-md {
   -moz-osx-font-smoothing: grayscale !important;
 }
 
-#rendered-md {
-  ${contentWidthCss}
-}
+#rendered-md { ${contentWidthCss} }
 
 body#tinymce h1, #rendered-md h1 {
   color: var(--od-h1) !important;
@@ -312,38 +360,20 @@ body#tinymce h4, #rendered-md h4 { color: var(--od-h4) !important; font-size: 1.
 body#tinymce h5, #rendered-md h5 { color: var(--od-h5) !important; font-size: 1.05em !important; font-weight: 600 !important; margin: 18px 0 10px 0 !important; }
 body#tinymce h6, #rendered-md h6 { color: var(--od-h6) !important; font-size: 1.0em !important; font-weight: 700 !important; margin: 16px 0 10px 0 !important; }
 
-#rendered-md li, body#tinymce li {
-  margin-bottom: 0.45em !important;
-  line-height: ${options.lineHeight} !important;
-}
+#rendered-md li, body#tinymce li { margin-bottom: 0.45em !important; line-height: ${options.lineHeight} !important; }
+#rendered-md li::marker, body#tinymce li::marker { color: var(--od-h2) !important; font-weight: bold !important; }
 
-#rendered-md li::marker, body#tinymce li::marker {
-  color: var(--od-h2) !important;
-  font-weight: bold !important;
-}
-
-/* Intelligent Checklist Styling */
-.md-checkbox input[type="checkbox"] {
-  vertical-align: middle !important;
-  cursor: pointer !important;
-}
-
+.md-checkbox input[type="checkbox"] { vertical-align: middle !important; cursor: pointer !important; }
 #rendered-md li:has(input[type="checkbox"]:checked),
 body#tinymce li:has(input[type="checkbox"]:checked) {
   opacity: 0.55 !important;
   text-decoration: line-through !important;
   transition: opacity 0.2s ease !important;
 }
-
 #rendered-md li:has(input[type="checkbox"]:checked) code,
-body#tinymce li:has(input[type="checkbox"]:checked) code {
-  opacity: 0.8 !important;
-  text-decoration: none !important;
-}
+body#tinymce li:has(input[type="checkbox"]:checked) code { opacity: 0.8 !important; text-decoration: none !important; }
 
-/* Responsive Images */
-#rendered-md img,
-body#tinymce img {
+#rendered-md img, body#tinymce img {
   max-width: 100% !important;
   max-height: 520px !important;
   height: auto !important;
@@ -354,42 +384,25 @@ body#tinymce img {
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08) !important;
 }
 
-/* Links (Standard vs Joplin Note Links) */
-body#tinymce a, #rendered-md a {
-  color: var(--od-link) !important;
-  text-decoration: none !important;
-  transition: color 0.15s ease !important;
-}
-body#tinymce a:hover, #rendered-md a:hover {
-  color: var(--od-link-hover) !important;
-  text-decoration: underline !important;
-}
+body#tinymce a, #rendered-md a { color: var(--od-link) !important; text-decoration: none !important; transition: color 0.15s ease !important; }
+body#tinymce a:hover, #rendered-md a:hover { color: var(--od-link-hover) !important; text-decoration: underline !important; }
 
 #rendered-md a[href^=":/"], body#tinymce a[href^=":/"] {
   font-weight: 600 !important;
   border-bottom: 1.5px dashed var(--od-link) !important;
   text-decoration: none !important;
 }
-#rendered-md a[href^=":/"]:hover, body#tinymce a[href^=":/"]:hover {
-  border-bottom-style: solid !important;
-}
+#rendered-md a[href^=":/"]:hover, body#tinymce a[href^=":/"]:hover { border-bottom-style: solid !important; }
 
-/* Blockquotes & Callouts */
 body#tinymce blockquote, #rendered-md blockquote {
   padding: 10px 16px !important;
   margin: 18px 0 !important;
-  /* background: var(--od-bg-alt) !important; */
-  /* border-radius: 4px !important; */
+  background: var(--od-bg-alt) !important;
+  border-radius: 4px !important;
   color: var(--od-fg) !important;
 }
 
-mark {
-  background-color: var(--od-mark-bg) !important;
-  color: var(--od-fg) !important;
-  padding: 1px 4px !important;
-  border-radius: 3px !important;
-}
-
+mark { background-color: var(--od-mark-bg) !important; color: var(--od-fg) !important; padding: 1px 4px !important; border-radius: 3px !important; }
 kbd {
   background-color: var(--od-kbd-bg) !important;
   border: 1px solid var(--od-border) !important;
@@ -400,19 +413,10 @@ kbd {
   box-shadow: 0 1px 0 rgba(0,0,0,0.2) !important;
 }
 
-body#tinymce .joplin-source,
-#rendered-md .joplin-source,
-pre.joplin-source,
-div.joplin-editable > pre.joplin-source {
-  display: none !important;
-  visibility: hidden !important;
-  height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
+body#tinymce .joplin-source, #rendered-md .joplin-source, pre.joplin-source, div.joplin-editable > pre.joplin-source {
+  display: none !important; visibility: hidden !important; height: 0 !important; margin: 0 !important; padding: 0 !important; border: none !important;
 }
 
-/* Inline Code & Code Blocks */
 body#tinymce code, #rendered-md code {
   font-family: ${resolvedCodeFont} !important;
   background-color: var(--od-code-bg) !important;
@@ -451,9 +455,6 @@ body#tinymce pre:not(.mermaid):not(.joplin-source) code,
   color: var(--od-fg) !important;
   padding: 0 !important;
   white-space: pre !important;
-  word-break: normal !important;
-  word-wrap: normal !important;
-  overflow-wrap: normal !important;
   display: inline-block !important;
   min-width: 100% !important;
 }
@@ -469,20 +470,16 @@ body#tinymce :is(p, li) code, #rendered-md :is(p, li) code {
   word-break: break-word !important;
 }
 
-/* =================================================================
-   TABLES: COMPREHENSIVE FONT OVERRIDE & CONTRAST FIX
-   ================================================================= */
+/* Explicit Table Font Inheritance */
 body#tinymce table, #rendered-md table,
 body#tinymce th, #rendered-md th,
 body#tinymce td, #rendered-md td {
   font-family: ${resolvedFont} !important;
 }
-
 body#tinymce table :is(th, td) *:not(code):not(pre),
 #rendered-md table :is(th, td) *:not(code):not(pre) {
   font-family: ${resolvedFont} !important;
 }
-
 body#tinymce table :is(th, td) code,
 #rendered-md table :is(th, td) code {
   font-family: ${resolvedCodeFont} !important;
@@ -519,10 +516,7 @@ body#tinymce td, #rendered-md td {
 }
 
 #rendered-md table td :not(code):not(pre):not(a),
-body#tinymce table td :not(code):not(pre):not(a) {
-  color: var(--od-fg) !important;
-}
-
+body#tinymce table td :not(code):not(pre):not(a) { color: var(--od-fg) !important; }
 body#tinymce tr:nth-child(even), #rendered-md tr:nth-child(even) { background-color: var(--od-table-even) !important; }
 body#tinymce tr:nth-child(odd), #rendered-md tr:nth-child(odd) { background-color: var(--od-table-odd) !important; }
 
@@ -573,14 +567,9 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
 }
 
 .mermaid .node rect, .mermaid .node polygon { rx: 6px !important; ry: 6px !important; }
-
 .mermaid .labelBkg, .mermaid rect.labelBkg, .mermaid span.labelBkg, .mermaid .edgeLabel rect {
-  background-color: transparent !important;
-  fill: transparent !important;
-  opacity: 0 !important;
-  border: none !important;
+  background-color: transparent !important; fill: transparent !important; opacity: 0 !important; border: none !important;
 }
-
 .mermaid .edgeLabel {
   background-color: var(--od-bg) !important;
   color: var(--od-fg) !important;
@@ -606,9 +595,7 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   display: inline-block !important;
   min-width: min(100%, 300px) !important;
 }
-#rendered-md .table-of-contents ul {
-  margin: 4px 0 !important;
-}
+#rendered-md .table-of-contents ul { margin: 4px 0 !important; }
 
 #rendered-md .footnotes, body#tinymce .footnotes {
   margin-top: 40px !important;
@@ -626,14 +613,10 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
     max-width: 100% !important;
     overflow-x: hidden !important;
   }
-
   body#tinymce h1, #rendered-md h1 { font-size: 1.6em !important; margin: 20px 0 12px 0 !important; }
   body#tinymce h2, #rendered-md h2 { font-size: 1.35em !important; margin: 18px 0 10px 0 !important; }
   body#tinymce h3, #rendered-md h3 { font-size: 1.2em !important; margin: 16px 0 8px 0 !important; }
-
-  #rendered-md img, body#tinymce img {
-    max-height: 420px !important;
-  }
+  #rendered-md img, body#tinymce img { max-height: 420px !important; }
 
   body#tinymce pre:not(.mermaid):not(.joplin-source),
   #rendered-md pre:not(.mermaid):not(.joplin-source) {
@@ -645,7 +628,6 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
   }
-
   body#tinymce table, #rendered-md table {
     font-size: 0.9em !important;
     max-width: 100% !important;
@@ -653,7 +635,6 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
   }
-
   #rendered-md .mermaid, body#tinymce .mermaid {
     padding: 14px 8px !important;
     max-width: 100% !important;
@@ -686,7 +667,6 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
     line-height: ${options.lineHeight} !important;
   }
 
-  /* Retain Chosen Font in Tables During PDF Export */
   body#tinymce table, #rendered-md table,
   body#tinymce th, #rendered-md th,
   body#tinymce td, #rendered-md td {
@@ -698,7 +678,6 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
     font-family: ${resolvedCodeFont} !important;
   }
 
-  /* Joplin Exported Note Title Styling */
   .exported-note-title {
     color: var(--od-h1) !important;
     font-family: ${resolvedFont} !important;
@@ -711,7 +690,6 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
     break-after: avoid !important;
   }
 
-  /* Headings: Retain theme colors & prevent orphan page splits */
   body#tinymce h1, #rendered-md h1 { color: var(--od-h1) !important; page-break-after: avoid !important; break-after: avoid !important; }
   body#tinymce h2, #rendered-md h2 { color: var(--od-h2) !important; page-break-after: avoid !important; break-after: avoid !important; }
   body#tinymce h3, #rendered-md h3 { color: var(--od-h3) !important; page-break-after: avoid !important; break-after: avoid !important; }
@@ -719,7 +697,6 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   body#tinymce h5, #rendered-md h5 { color: var(--od-h5) !important; page-break-after: avoid !important; break-after: avoid !important; }
   body#tinymce h6, #rendered-md h6 { color: var(--od-h6) !important; page-break-after: avoid !important; break-after: avoid !important; }
 
-  /* Tables: Convert from scrollable blocks to full printable tables (No Cropping!) */
   body#tinymce table, #rendered-md table {
     display: table !important;
     width: 100% !important;
@@ -731,20 +708,14 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
     margin: 16px 0 !important;
   }
 
-  body#tinymce tr, #rendered-md tr {
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-  }
-
-  body#tinymce th, #rendered-md th,
-  body#tinymce td, #rendered-md td {
+  body#tinymce tr, #rendered-md tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+  body#tinymce th, #rendered-md th, body#tinymce td, #rendered-md td {
     white-space: normal !important;
     word-break: break-word !important;
     overflow-wrap: break-word !important;
     padding: 6px 10px !important;
   }
 
-  /* Code Blocks: Wrap long lines so nothing runs off the page */
   body#tinymce pre:not(.mermaid):not(.joplin-source),
   #rendered-md pre:not(.mermaid):not(.joplin-source) {
     white-space: pre-wrap !important;
@@ -766,7 +737,6 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
     min-width: 100% !important;
   }
 
-  /* Diagrams, Images, Blockquotes & Formulas */
   #rendered-md .mermaid, body#tinymce .mermaid {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
