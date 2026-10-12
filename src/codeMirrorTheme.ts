@@ -34,7 +34,7 @@ module.exports = {
 
     async function updateStyles(): Promise<void> {
       try {
-        const res: { editorCss: string; viewerCss: string } | null = await context.postMessage({
+        const res: { editorCss: string; viewerCss: string; chromeCss?: string } | null = await context.postMessage({
           type: 'getAllStyles',
         });
         if (!res) return;
