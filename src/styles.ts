@@ -212,7 +212,7 @@ ${dirCss}
 .tox .tox-toolbar__primary,
 .tox .tox-toolbar__overflow {
   background-color: var(--od-bg-alt) !important;
-  border-bottom: 1px solid var(--od-border) !important;
+  border-bottom: none !important;
 }
 .tox .tox-tbtn {
   color: var(--od-fg) !important;
@@ -473,16 +473,22 @@ button[title*="Synchronize"] {
   background: var(--od-bg) !important;
   color: var(--od-fg) !important;
   border: 1px solid var(--od-border) !important;
+  border-color: var(--od-border) !important;
+  box-shadow: none !important;
+  outline: none !important;
   border-radius: 4px !important;
   font-weight: 600 !important;
   padding: 6px 12px !important;
 }
 
 .rli-sideBar > div:last-child button:hover,
-.synchronize-button button:hover {
+.synchronize-button button:hover,
+.synchronize-button button:focus {
   background-color: var(--od-selection) !important;
   border-color: var(--od-link) !important;
   color: var(--od-link) !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 .synchronize-button svg,
@@ -563,10 +569,10 @@ div:has(> .new-note-button),
 div:has(> button.new-note-button) {
   background-color: var(--od-bg-alt) !important;
   background: var(--od-bg-alt) !important;
-  border-bottom: 1px solid var(--od-border) !important;
+  border-bottom: none !important;
 }
 
-/* New note & New to-do Buttons */
+/* New note & New to-do Buttons: Dynamic contrast against --od-link */
 button.new-note-button,
 button.new-todo-button,
 div.rli-noteList button.new-note-button,
@@ -582,11 +588,18 @@ a[title="New note"],
 a[title="New to-do"] {
   background-color: var(--od-link) !important;
   background: var(--od-link) !important;
-  color: #ffffff !important;
+  color: var(--od-bg) !important;
   border: none !important;
   border-radius: 4px !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
   box-shadow: none !important;
+}
+
+button.new-note-button *,
+button.new-todo-button *,
+div.new-note-todo-buttons button * {
+  color: var(--od-bg) !important;
+  fill: var(--od-bg) !important;
 }
 
 button.new-note-button:hover,
@@ -713,14 +726,14 @@ button.toolbar-button:hover {
   border-radius: 4px !important;
 }
 
-/* Markdown Editor Formatting Toolbar */
+/* --- 6. Markdown Editor Formatting Toolbar --- */
 .editor-toolbar,
 div.editor-toolbar,
 div[class*="editor-toolbar"],
 .r-editor-toolbar {
   background-color: var(--od-bg-alt) !important;
   background: var(--od-bg-alt) !important;
-  border-bottom: 1px solid var(--od-border) !important;
+  border-bottom: none !important;
 }
 
 .editor-toolbar *,
