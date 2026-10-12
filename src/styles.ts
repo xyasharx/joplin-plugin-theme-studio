@@ -357,6 +357,7 @@ a.list-item,
 a.list-item *,
 .list-item-container * {
   color: var(--od-fg) !important;
+  border-color: var(--od-fg) !important;
 }
 
 .side-bar svg,
