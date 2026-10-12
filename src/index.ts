@@ -1,6 +1,6 @@
 import joplin from 'api';
 import { ContentScriptType, SettingItemType } from 'api/types';
-import { buildEditorCss, buildThemeCss, StyleOptions } from './styles';
+import { buildEditorCss, buildThemeCss, buildChromeCss, StyleOptions } from './styles';
 
 joplin.plugins.register({
   onStart: async function () {
@@ -69,6 +69,14 @@ joplin.plugins.register({
         public: true,
         label: 'Apply Theme to Markdown Editor',
         description: 'Styles the CodeMirror editor (background, colors, line numbers, headings) to match the viewer.',
+      },
+      'themeApplicationShell': {
+        value: true,
+        type: SettingItemType.Bool,
+        section: 'themeStudioSection',
+        public: true,
+        label: 'Theme Application Shell (Sidebar & Note List)',
+        description: 'Applies the active palette to Joplin\'s desktop sidebar, note list, and header (Desktop only).',
       },
       'fontPreset': {
         value: defaultFontPreset,
@@ -190,14 +198,34 @@ joplin.plugins.register({
       './codeMirrorTheme.js'
     );
 
-    // 2. Respond to editor style requests (CodeMirror + TinyMCE Rich Text)
+    async function syncDesktopChromeFile(options: StyleOptions, enabled: boolean): Promise<void> {
+      try {
+        if (joplin.window && typeof (joplin.window as any).loadChromeCssFile === 'function') {
+          const fs = joplin.require('fs-extra');
+          const dataDir: string = await joplin.plugins.dataDir();
+          const chromeCssPath = `${dataDir}/theme-studio-chrome.css`;
+          const content = enabled ? buildChromeCss(options) : '';
+          await fs.writeFile(chromeCssPath, content, 'utf8');
+          await (joplin.window as any).loadChromeCssFile(chromeCssPath);
+        }
+      } catch (_err) {
+        // Gracefully ignore on mobile platforms where loadChromeCssFile is unavailable
+      }
+    }
+
+    // 2. Respond to style requests (CodeMirror + TinyMCE Rich Text + Shell Chrome)
     await joplin.contentScripts.onMessage('themeStudioCodeMirror', async (message: any) => {
       if (message && (message.type === 'getAllStyles' || message.type === 'getEditorStyles')) {
-        const enabled = await joplin.settings.value('enableEditorTheme');
+        const editorEnabled = await joplin.settings.value('enableEditorTheme');
+        const shellEnabled = await joplin.settings.value('themeApplicationShell');
         const options = await getCurrentOptions();
+
+        await syncDesktopChromeFile(options, shellEnabled);
+
         return {
-          editorCss: enabled ? buildEditorCss(options) : '',
+          editorCss: editorEnabled ? buildEditorCss(options) : '',
           viewerCss: buildThemeCss(options),
+          chromeCss: shellEnabled ? buildChromeCss(options) : '',
         };
       }
       return null;
