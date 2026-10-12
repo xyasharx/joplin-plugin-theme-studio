@@ -250,16 +250,23 @@ ${cssVariables}
 /* --- 1. Primary Left Sidebar (Notebooks, Tags & Items) --- */
 .side-bar,
 .r-sidebar,
+.rli-sideBar,
 div[toggleblock="1"] {
   background-color: var(--od-bg-alt) !important;
   color: var(--od-fg) !important;
   font-family: ${resolvedFont} !important;
 }
 
-/* Force dark text on light themes & light text on dark themes across all sidebar children */
+/* Override Joplin's internal folder and tag tree text colors */
 .side-bar *,
 .r-sidebar *,
-div[toggleblock="1"] * {
+.rli-sideBar *,
+div[toggleblock="1"] *,
+.folders *,
+.tags *,
+a.list-item,
+a.list-item *,
+.list-item-container * {
   color: var(--od-fg) !important;
 }
 
