@@ -4,16 +4,23 @@
 [![Platforms](https://img.shields.io/badge/Platforms-Desktop%20%7C%20Mobile-green)](#-installation)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Theme Studio is a modular palette and typography engine for Joplin. It applies unified color schemes and typography across the **Markdown Viewer**, the **Markdown Editor** (CodeMirror 6 & 5), and the **Rich Text Editor** (TinyMCE)—eliminating manual edits to `userstyle.css` and `userchrome.css`.
+Theme Studio is a modular palette and typography engine for Joplin. It applies unified color schemes and typography across the **Markdown Viewer**, the **Markdown Editor** (CodeMirror 6 & 5), the **Rich Text Editor** (TinyMCE), and the **Desktop Application Shell** (Sidebar, Note List, and Toolbars)—eliminating manual edits to `userstyle.css` and `userchrome.css`.
 
 ---
 
 ## ✨ Features
 
-- **Universal Mode Theming:** Applies the selected theme across the Markdown Viewer, the CodeMirror Markdown Editor (gutters, syntax highlighting, active line, caret, selection), and the TinyMCE Rich Text Editor (iframe content and outer toolbar).
+- **Universal Interface & Editor Theming:** Applies the selected theme across:
+  - Note Viewer (`#rendered-md`).
+  - CodeMirror Markdown Editor (gutters, syntax highlighting, active line, caret, selection).
+  - TinyMCE Rich Text Editor (iframe document and toolbar).
+  - Desktop Application Shell (Sidebar, Note List, Header, Search Bar, Splitters, and Sync Panel).
 - **12 Integrated Color Schemes:** Switch between dark and light palettes (Tokyo Night, Everforest, Catppuccin, Nord, Dracula, Gruvbox, Atom One) without restarting Joplin.
-- **Smart BiDi Locale Detection:** Inspects Joplin's system interface language on initialization. Defaults to LTR with Inter for global locales, and RTL with Vazirmatn for Persian, Arabic, and Hebrew interfaces.
+- **Third-Party Plugin Panel Synchronization:** Propagates theme variables, background colors, and font styles into webview panels created by third-party plugins (such as *Outline* and *Note Tabs*).
+- **Configurable Heading Typography Scales:** Choose between balanced, large editorial, compact dense, or custom comma-separated typographic scales for H1 through H6 headings.
+- **Smart BiDi Locale Detection:** Queries Joplin's interface language on launch. Automatically defaults to LTR with Inter for global locales, and RTL with Vazirmatn for Persian, Arabic, and Hebrew interfaces.
 - **Auto-BiDi Direction Mode:** Includes an `Auto-Detect (Per-Paragraph BiDi)` mode utilizing `unicode-bidi: plaintext` and CSS Logical Properties to align individual paragraphs based on their script direction.
+- **Tree Indentation & Toolbar Geometry Preservation:** Maintains Joplin's native nested notebook tree indentation (`padding-left: 16px, 32px, 48px`) while keeping toolbar coordinate layouts intact during RTL mode.
 - **International Web Font Engine:** Loads open-source typefaces via CDN on demand (with `display=swap` to eliminate FOIT). Enables custom typography on Joplin Mobile without requiring local OS font installation.
 - **Performance Optimized Rendering:** Features an in-memory memoization cache in the Markdown-It parser. Generates compiled CSS once per configuration change, reducing keystroke re-rendering to O(1) memory retrieval.
 - **High-Fidelity PDF & Print Export:** Preserves theme backgrounds, syntax colors, and borders using `print-color-adjust: exact`. Tables automatically wrap cells to prevent margin clipping, and code blocks wrap long lines (`pre-wrap`).
@@ -94,15 +101,18 @@ Access the settings panel under **Tools > Options > Theme Studio** (on Mobile: *
 
 | Setting Key | Options / Inputs | Default | Description |
 | :--- | :--- | :--- | :--- |
-| **Color Theme** | 12 built-in palettes | `Atom One Dark` | Sets document and editor color tokens |
+| **Color Theme** | 12 built-in palettes | `Atom One Dark` | Sets document, editor, and UI chrome color tokens |
 | **Layout Direction** | `LTR`, `Auto-Detect (BiDi)`, `RTL` | Auto-detected | Primary text direction and border alignment |
 | **Apply Theme to Markdown Editor** | `true` / `false` | `true` | Styles CodeMirror 6/5 and TinyMCE editors |
+| **Theme Application Shell** | `true` / `false` | `true` | Applies palette to Joplin sidebar, note list, and toolbars (Desktop only) |
 | **International Font Preset** | 11 font presets | Auto-detected | On-demand web font loaded via CDN |
 | **Custom Font Stack** | CSS `font-family` string | System Stack | Active when preset is set to *Custom* |
 | **Code Font Preset** | `Fira Code`, `JetBrains Mono`, `System`, `Custom` | `Fira Code` | Monospace font for code blocks and editor |
 | **Custom Code Font Stack** | CSS `font-family` string | Cascadia / Consolas | Active when code preset is set to *Custom* |
 | **Font Size** | Text string (e.g., `16px`, `18px`) | `16px` | Scales base text size across desktop & mobile |
 | **Line Height** | Numeric string (e.g., `1.6`, `1.75`) | `1.75` | Sets body reading line spacing |
+| **Heading Sizes Preset** | `Balanced`, `Large`, `Compact`, `Custom` | `Balanced` | Typographic scale applied to H1 through H6 headings |
+| **Custom Heading Sizes** | Comma-separated sizes string | `1.75em, 1.42em, ...` | Custom sizes for H1 to H6 (e.g., `28px, 24px, 20px, ...`) |
 | **Reading Width (Focus Mode)** | `Full Width`, `Comfortable (920px)`, `Compact (760px)` | `Full Width` | Constrains note container width on wide monitors |
 | **PDF Export Appearance** | `Exact Match`, `Paper Friendly` | `Exact Match` | Controls background retention in exported PDFs |
 
@@ -124,7 +134,7 @@ When **Layout Direction** is set to `RTL`, left-to-right code explanations, Engl
 </div>
 ```
 
-*Tip: Selecting `Auto-Detect (Per-Paragraph BiDi)` handles mixed language paragraphs automatically without requiring manual `div` tags.*
+*Tip: Selecting `Auto-Detect (Per-Paragraph BiDi)` handles mixed-language paragraphs automatically without requiring manual `div` tags.*
 
 ---
 
