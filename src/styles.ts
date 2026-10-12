@@ -429,11 +429,18 @@ a.list-item *,
   display: inline-block !important;
 }
 
-/* --- 3. Bottom Left: Synchronize Panel & Status Box --- */
-div.rli-sideBar > div:last-child,
-div.rli-sideBar > div:nth-child(2),
-div.rli-sideBar > div[style*="border-top"],
-div.side-bar > div:last-child,
+/* --- 2. Bottom Left: Synchronize Panel --- */
+.rli-sideBar > div:last-child,
+.rli-sideBar > div:nth-child(2),
+.rli-sideBar div[style*="border-top"],
+.rli-sideBar div[style*="background-color"],
+.rli-sideBar > div > div:last-child,
+.side-bar > div:last-child,
+div:has(> .synchronize-button),
+div:has(.synchronize-button),
+div:has(> button.synchronize-button),
+div:has(button[title*="Sync"]),
+div:has(button[title*="Synchronize"]),
 .synchronize-button,
 .sync-status-box,
 div.sync-report,
@@ -444,9 +451,9 @@ div[class*="Sync"] {
   border-top: 1px solid var(--od-border) !important;
 }
 
-div.rli-sideBar > div:last-child *,
-div.rli-sideBar > div:nth-child(2) *,
-div.rli-sideBar > div[style*="border-top"] *,
+.rli-sideBar > div:last-child *,
+.rli-sideBar > div:nth-child(2) *,
+div:has(.synchronize-button) *,
 .synchronize-button *,
 .sync-status-box *,
 div.sync-report * {
@@ -454,12 +461,14 @@ div.sync-report * {
   color: var(--od-comment) !important;
 }
 
-div.rli-sideBar > div:last-child button,
-div.rli-sideBar > div:nth-child(2) button,
-div.rli-sideBar > div[style*="border-top"] button,
+.rli-sideBar > div:last-child button,
+.rli-sideBar > div:nth-child(2) button,
+div:has(.synchronize-button) button,
 .synchronize-button button,
 .sync-status-box button,
-div.side-bar > div:last-child button {
+button.synchronize-button,
+button[title*="Sync"],
+button[title*="Synchronize"] {
   background-color: var(--od-bg) !important;
   background: var(--od-bg) !important;
   color: var(--od-fg) !important;
@@ -469,15 +478,23 @@ div.side-bar > div:last-child button {
   padding: 6px 12px !important;
 }
 
-div.rli-sideBar > div:last-child button:hover,
-div.rli-sideBar > div:nth-child(2) button:hover,
+.rli-sideBar > div:last-child button:hover,
 .synchronize-button button:hover {
   background-color: var(--od-selection) !important;
   border-color: var(--od-link) !important;
   color: var(--od-link) !important;
 }
 
-/* --- 4. Note List Panel & Items --- */
+.synchronize-button svg,
+.synchronize-button path,
+.synchronize-button i,
+div:has(.synchronize-button) svg,
+div:has(.synchronize-button) path {
+  fill: var(--od-fg) !important;
+  color: var(--od-fg) !important;
+}
+
+/* --- 3. Note List Panel & Active Item Selection --- */
 .note-list,
 .r-note-list,
 .item-list,
@@ -511,7 +528,7 @@ div.rli-noteList .list-item-container {
   background-color: var(--od-selection) !important;
 }
 
-/* Active Selected Note (Overrides Inline rgb(56, 62, 74)) */
+/* Active Selected Note (Overrides Inline Dark Styles) */
 div.rli-noteList [aria-selected="true"],
 div.rli-noteList .selected,
 div.rli-noteList div[class*="selected"],
@@ -534,44 +551,54 @@ div.note-list .selected * {
   font-weight: 700 !important;
 }
 
-/* --- 5. Top Left: Note List Header Bar, Buttons & Search --- */
+/* --- 4. Top Left: Note List Header Bar, Buttons & Search (Green Box) --- */
 div.rli-noteList > div > div > div:first-child,
 div.rli-noteList .note-list-top-bar,
 .note-list-top-bar,
 .note-list > div:first-child,
 .note-list .header,
-.search-bar {
+.search-bar,
+div.new-note-todo-buttons,
+div:has(> .new-note-button),
+div:has(> button.new-note-button) {
   background-color: var(--od-bg-alt) !important;
   background: var(--od-bg-alt) !important;
   border-bottom: 1px solid var(--od-border) !important;
 }
 
-div.rli-noteList button.new-note-button,
-div.rli-noteList button.new-todo-button,
+/* New note & New to-do Buttons */
 button.new-note-button,
 button.new-todo-button,
+div.rli-noteList button.new-note-button,
+div.rli-noteList button.new-todo-button,
+div.new-note-todo-buttons button,
 div.header a.button,
 div.header button,
 .note-list .header button,
-.note-list-top-bar button,
+.note-list-top-bar button:not(.sort-order-reverse-button),
 a.button[title="New note"],
-a.button[title="New to-do"] {
+a.button[title="New to-do"],
+a[title="New note"],
+a[title="New to-do"] {
   background-color: var(--od-link) !important;
   background: var(--od-link) !important;
   color: #ffffff !important;
   border: none !important;
   border-radius: 4px !important;
   font-weight: 600 !important;
+  box-shadow: none !important;
 }
 
+button.new-note-button:hover,
+button.new-todo-button:hover,
 div.rli-noteList button.new-note-button:hover,
 div.rli-noteList button.new-todo-button:hover,
-button.new-note-button:hover,
-button.new-todo-button:hover {
+div.new-note-todo-buttons button:hover {
   background-color: var(--od-link-hover) !important;
   background: var(--od-link-hover) !important;
 }
 
+/* Search bar input */
 div.rli-noteList input,
 div.rli-noteList input[type="search"],
 .note-list-top-bar input,
@@ -579,6 +606,18 @@ div.rli-noteList input[type="search"],
 .search-bar input,
 input[type="search"] {
   background-color: var(--od-bg) !important;
+  color: var(--od-fg) !important;
+  border: 1px solid var(--od-border) !important;
+  border-radius: 4px !important;
+}
+
+/* Sort, Reverse & Calendar Buttons in Search Row */
+button.sort-order-reverse-button,
+div.rli-noteList button.sort-order-reverse-button,
+div.rli-noteList button:not(.new-note-button):not(.new-todo-button),
+.note-list-top-bar button.sort-order-reverse-button {
+  background-color: var(--od-bg) !important;
+  background: var(--od-bg) !important;
   color: var(--od-fg) !important;
   border: 1px solid var(--od-border) !important;
   border-radius: 4px !important;
@@ -594,21 +633,60 @@ div.rli-noteList path,
   color: var(--od-fg) !important;
 }
 
-/* --- 6. Top Right: Note Header Bar & Title Info Group --- */
+/* --- 5. Top Right: Note Header & Unified Navbar (Blue Box) --- */
 .header,
 .r-header,
 .top-bar,
 .note-title-wrapper,
-.note-title-info-group {
+div.note-title-wrapper {
   background-color: var(--od-bg-alt) !important;
   background: var(--od-bg-alt) !important;
   border-bottom: 1px solid var(--od-border) !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  box-sizing: border-box !important;
+  min-height: 40px !important;
+}
+
+/* Seamless Title Input (Blends directly into the header bar without boxed borders) */
+input.title-input {
+  background-color: transparent !important;
+  background: transparent !important;
+  border: none !important;
+  border-bottom: none !important;
+  color: var(--od-fg) !important;
+  font-family: ${resolvedFont} !important;
+  font-size: 1.2em !important;
+  font-weight: 700 !important;
+  padding: 6px 14px !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+input.title-input:focus {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Seamless Info Group (Eliminates disconnected borders and mismatched fills) */
+.note-title-info-group,
+div.note-title-info-group {
+  background-color: transparent !important;
+  background: transparent !important;
+  border: none !important;
+  border-bottom: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  box-shadow: none !important;
 }
 
 .note-title-info-group *,
 .header span,
 .header div {
   color: var(--od-fg) !important;
+  border-bottom: none !important;
 }
 
 .note-title-info-group svg,
@@ -625,29 +703,17 @@ div.rli-noteList path,
 button.toolbar-button {
   background-color: transparent !important;
   color: var(--od-fg) !important;
+  border: none !important;
 }
 
 .header button:hover,
 .header a:hover,
 button.toolbar-button:hover {
   background-color: var(--od-selection) !important;
-}
-
-input.title-input {
-  background-color: var(--od-bg) !important;
-  color: var(--od-fg) !important;
-  border: 1px solid var(--od-border) !important;
   border-radius: 4px !important;
-  font-family: ${resolvedFont} !important;
-  padding: 6px 10px !important;
 }
 
-input.title-input:focus {
-  border-color: var(--od-link) !important;
-  outline: none !important;
-}
-
-/* --- 7. Markdown Editor Formatting Toolbar --- */
+/* Markdown Editor Formatting Toolbar */
 .editor-toolbar,
 div.editor-toolbar,
 div[class*="editor-toolbar"],
