@@ -147,6 +147,29 @@ joplin.plugins.register({
         label: 'Line Height',
         description: 'Reading line spacing (e.g., 1.6, 1.75, 1.9).',
       },
+      'headingSizePreset': {
+        value: 'balanced',
+        type: SettingItemType.String,
+        section: 'themeStudioSection',
+        isEnum: true,
+        public: true,
+        label: 'Heading Sizes Preset',
+        description: 'Typographic scale applied to H1 through H6 headings.',
+        options: {
+          'balanced': 'Balanced / Standard (H1: 1.75em, H2: 1.42em, H3: 1.25em...)',
+          'large': 'Large / Editorial (H1: 2.15em, H2: 1.7em, H3: 1.4em...)',
+          'compact': 'Compact / Dense (H1: 1.5em, H2: 1.3em, H3: 1.18em...)',
+          'custom': 'Custom Sizes (Configured below)',
+        },
+      },
+      'customHeadingSizes': {
+        value: '1.75em, 1.42em, 1.25em, 1.12em, 1.05em, 1.0em',
+        type: SettingItemType.String,
+        section: 'themeStudioSection',
+        public: true,
+        label: 'Custom Heading Sizes (H1 - H6)',
+        description: 'Active only when "Custom Sizes" is selected. Comma-separated sizes from H1 to H6 (e.g., 28px, 24px, 20px, 18px, 16px, 14px or 2.2em, 1.7em, 1.4em, 1.2em, 1.1em, 1.0em).',
+      },
       'contentMaxWidth': {
         value: 'full',
         type: SettingItemType.String,
@@ -188,6 +211,8 @@ joplin.plugins.register({
         lineHeight: await joplin.settings.value('lineHeight'),
         contentMaxWidth: await joplin.settings.value('contentMaxWidth'),
         pdfExportStyle: await joplin.settings.value('pdfExportStyle'),
+        headingSizePreset: await joplin.settings.value('headingSizePreset'),
+        customHeadingSizes: await joplin.settings.value('customHeadingSizes'),
       };
     }
 
