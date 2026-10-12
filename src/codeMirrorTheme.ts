@@ -2,19 +2,22 @@ module.exports = {
   default: function (context: any) {
     let cachedViewerCss = '';
     let cachedEditorCss = '';
+    let cachedChromeCss = '';
 
-    function injectIntoTinyMCE(css: string): void {
-      if (typeof document === 'undefined' || !css) return;
+    function injectIntoIframes(viewerCss: string, chromeCss: string): void {
+      if (typeof document === 'undefined') return;
 
       const iframes = document.querySelectorAll('iframe');
       iframes.forEach((iframe: HTMLIFrameElement) => {
         try {
           const doc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (!doc || !doc.head) return;
+
+          // 1. Rich Text Editor (TinyMCE)
           if (
-            doc &&
-            (doc.body?.id === 'tinymce' ||
-              doc.querySelector('#tinymce') ||
-              doc.body?.classList.contains('mce-content-body'))
+            doc.body?.id === 'tinymce' ||
+            doc.querySelector('#tinymce') ||
+            doc.body?.classList.contains('mce-content-body')
           ) {
             let styleEl = doc.getElementById('theme-studio-tinymce-styles') as HTMLStyleElement | null;
             if (!styleEl) {
@@ -22,8 +25,36 @@ module.exports = {
               styleEl.id = 'theme-studio-tinymce-styles';
               doc.head.appendChild(styleEl);
             }
-            if (styleEl.textContent !== css) {
-              styleEl.textContent = css;
+            if (viewerCss && styleEl.textContent !== viewerCss) {
+              styleEl.textContent = viewerCss;
+            }
+          } else {
+            // 2. Plugin Panels (Outline, Note Tabs, etc.)
+            let panelStyleEl = doc.getElementById('theme-studio-panel-styles') as HTMLStyleElement | null;
+            if (!panelStyleEl) {
+              panelStyleEl = doc.createElement('style');
+              panelStyleEl.id = 'theme-studio-panel-styles';
+              doc.head.appendChild(panelStyleEl);
+            }
+            if (chromeCss) {
+              const panelCss = `
+                ${chromeCss}
+                body, html {
+                  background-color: var(--od-bg) !important;
+                  color: var(--od-fg) !important;
+                }
+                a, span, div, li, p, input {
+                  color: var(--od-fg) !important;
+                }
+                a:hover, .header-list-item:hover, li:hover {
+                  background-color: var(--od-selection) !important;
+                }
+              `;
+              if (panelStyleEl.textContent !== panelCss) {
+                panelStyleEl.textContent = panelCss;
+              }
+            } else if (panelStyleEl.textContent) {
+              panelStyleEl.textContent = '';
             }
           }
         } catch (_err) {
@@ -39,9 +70,11 @@ module.exports = {
         });
         if (!res) return;
 
-        const { editorCss, viewerCss } = res;
+        const { editorCss, viewerCss, chromeCss } = res;
+        cachedViewerCss = viewerCss;
+        cachedChromeCss = chromeCss || '';
 
-        // 1. Apply to Markdown Editor (CodeMirror 6 / 5) & Outer TinyMCE Chrome
+        // 1. Apply to Markdown Editor (CodeMirror 6 / 5)
         if (editorCss && editorCss !== cachedEditorCss && typeof document !== 'undefined') {
           cachedEditorCss = editorCss;
           let styleEl = document.getElementById('theme-studio-editor-styles') as HTMLStyleElement | null;
@@ -55,28 +88,25 @@ module.exports = {
           }
         }
 
-        // 2. Apply to Rich Text Editor (TinyMCE iframe document)
-        if (viewerCss) {
-          cachedViewerCss = viewerCss;
-          injectIntoTinyMCE(viewerCss);
-        }
-
-        // 3. Apply to Application Shell (Sidebar, Note List, Toolbar) in real-time
+        // 2. Apply to Application Shell (Sidebar, Note List, Toolbars, Headers) in real-time
         if (typeof document !== 'undefined') {
           let chromeStyleEl = document.getElementById('theme-studio-chrome-styles') as HTMLStyleElement | null;
-          if (res.chromeCss) {
+          if (cachedChromeCss) {
             if (!chromeStyleEl) {
               chromeStyleEl = document.createElement('style');
               chromeStyleEl.id = 'theme-studio-chrome-styles';
               document.head.appendChild(chromeStyleEl);
             }
-            if (chromeStyleEl.textContent !== res.chromeCss) {
-              chromeStyleEl.textContent = res.chromeCss;
+            if (chromeStyleEl.textContent !== cachedChromeCss) {
+              chromeStyleEl.textContent = cachedChromeCss;
             }
           } else if (chromeStyleEl) {
             chromeStyleEl.textContent = '';
           }
         }
+
+        // 3. Inject styles into TinyMCE and all Plugin Panels (e.g., Outline)
+        injectIntoIframes(cachedViewerCss, cachedChromeCss);
       } catch (_err) {
         // Silently recover if messaging is disconnected during note transition
       }
@@ -90,11 +120,10 @@ module.exports = {
           window.addEventListener('focus', updateStyles);
         }
 
-        // Detect when Joplin swaps the DOM view between Markdown and Rich Text editor
         if (typeof document !== 'undefined' && document.body) {
           const observer = new MutationObserver(() => {
-            if (cachedViewerCss) {
-              injectIntoTinyMCE(cachedViewerCss);
+            if (cachedViewerCss || cachedChromeCss) {
+              injectIntoIframes(cachedViewerCss, cachedChromeCss);
             }
           });
           observer.observe(document.body, { childList: true, subtree: true });
