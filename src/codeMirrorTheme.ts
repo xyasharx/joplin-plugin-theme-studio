@@ -29,7 +29,7 @@ module.exports = {
               styleEl.textContent = viewerCss;
             }
           } else {
-            // 2. Plugin Panels (Outline, Note Tabs, etc.)
+            // 2. Plugin Webview Panels (Outline, Note Tabs, etc.)
             let panelStyleEl = doc.getElementById('theme-studio-panel-styles') as HTMLStyleElement | null;
             if (!panelStyleEl) {
               panelStyleEl = doc.createElement('style');
@@ -39,20 +39,30 @@ module.exports = {
             if (chromeCss) {
               const panelCss = `
                 ${chromeCss}
-                body, html, #root, #app, .panel, header, .header {
+                :root {
+                  --joplin-background-color: var(--od-bg) !important;
+                  --joplin-background-color-transparent30: var(--od-selection) !important;
+                  --joplin-color: var(--od-fg) !important;
+                  --joplin-color-hover: var(--od-link) !important;
+                  --joplin-divider-color: var(--od-border) !important;
+                }
+                *, *::before, *::after {
+                  border-color: var(--od-border) !important;
+                }
+                body, html, #root, #app, .panel, header, .header, nav, .toolbar, .search-container, .top-bar {
                   background-color: var(--od-bg) !important;
                   color: var(--od-fg) !important;
                 }
-                header, .header, .search-container, .top-bar {
+                header, .header, nav, .toolbar, .search-container, .top-bar, .search-box {
                   background-color: var(--od-bg-alt) !important;
                   border-bottom: 1px solid var(--od-border) !important;
                 }
-                input {
+                input, input[type="text"], input[type="search"] {
                   background-color: var(--od-bg) !important;
                   color: var(--od-fg) !important;
                   border: 1px solid var(--od-border) !important;
                 }
-                a, span, div, li, p, i, input {
+                a, span, div, li, p, i, button {
                   color: var(--od-fg) !important;
                 }
                 svg, path {
@@ -101,7 +111,7 @@ module.exports = {
           }
         }
 
-        // 2. Apply to Application Shell (Sidebar, Note List, Toolbars, Headers) in real-time
+        // 2. Apply to Application Shell in real-time
         if (typeof document !== 'undefined') {
           let chromeStyleEl = document.getElementById('theme-studio-chrome-styles') as HTMLStyleElement | null;
           if (cachedChromeCss) {
@@ -118,7 +128,7 @@ module.exports = {
           }
         }
 
-        // 3. Inject styles into TinyMCE and all Plugin Panels (e.g., Outline)
+        // 3. Inject styles into TinyMCE and all Plugin Panels (Outline, etc.)
         injectIntoIframes(cachedViewerCss, cachedChromeCss);
       } catch (_err) {
         // Silently recover if messaging is disconnected during note transition
