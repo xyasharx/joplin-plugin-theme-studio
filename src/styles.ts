@@ -227,7 +227,177 @@ ${dirCss}
 }
 
 // =================================================================
-// 2. MARKDOWN VIEWER & PDF RENDER ENGINE
+// 2. APPLICATION SHELL (DESKTOP UI) THEMING ENGINE
+// =================================================================
+export function buildChromeCss(options: StyleOptions): string {
+  const selectedTheme = themes[options.themeKey] || themes['atom-one-dark'];
+  const { fontImport, resolvedFont } = resolveFonts(options);
+
+  let cssVariables = ':root {\n';
+  for (const [key, value] of Object.entries(selectedTheme.variables)) {
+    cssVariables += `  ${key}: ${value};\n`;
+  }
+  cssVariables += '}\n';
+
+  return `
+${fontImport}
+${cssVariables}
+
+/* Primary Sidebar (Notebooks, Tags, Sync) */
+.side-bar,
+.r-sidebar,
+div[toggleblock="1"] {
+  background-color: var(--od-bg-alt) !important;
+  color: var(--od-fg) !important;
+  font-family: ${resolvedFont} !important;
+}
+
+.side-bar .list-item-container,
+.side-bar .list-item,
+.side-bar a,
+.side-bar span {
+  color: var(--od-fg) !important;
+  font-family: ${resolvedFont} !important;
+}
+
+.side-bar .list-item-container:hover,
+.side-bar .list-item:hover,
+.side-bar a:hover {
+  background-color: var(--od-selection) !important;
+}
+
+.side-bar .list-item-container.selected,
+.side-bar .list-item.selected,
+.side-bar a.selected {
+  background-color: var(--od-selection) !important;
+  font-weight: 600 !important;
+}
+
+.side-bar .header,
+.side-bar div[style*="font-weight: bold"],
+.side-bar .section-header {
+  color: var(--od-comment) !important;
+  font-size: 0.85em !important;
+  letter-spacing: 0.5px !important;
+}
+
+.synchronize-button,
+.sync-status-box {
+  background-color: var(--od-bg-alt) !important;
+  border-top: 1px solid var(--od-border) !important;
+  color: var(--od-fg) !important;
+}
+
+.synchronize-button button,
+.sync-status-box button {
+  background-color: transparent !important;
+  color: var(--od-link) !important;
+  border: 1px solid var(--od-border) !important;
+  border-radius: 4px !important;
+}
+
+/* Note List Panel */
+.note-list,
+.r-note-list,
+.item-list {
+  background-color: var(--od-bg) !important;
+  color: var(--od-fg) !important;
+  border-right: 1px solid var(--od-border) !important;
+  border-left: 1px solid var(--od-border) !important;
+  font-family: ${resolvedFont} !important;
+}
+
+.note-list .list-item-container,
+.note-list .list-item,
+.note-list-item {
+  border-bottom: 1px solid var(--od-border) !important;
+  color: var(--od-fg) !important;
+}
+
+.note-list .list-item-container:hover,
+.note-list .list-item:hover,
+.note-list a:hover {
+  background-color: var(--od-selection) !important;
+}
+
+.note-list .list-item-container.selected,
+.note-list .list-item.selected,
+.note-list a.selected,
+.note-list-item.selected {
+  background-color: var(--od-selection) !important;
+  border-left: 3px solid var(--od-h2) !important;
+}
+
+.note-list .title,
+.note-list-item-title {
+  color: var(--od-fg) !important;
+  font-family: ${resolvedFont} !important;
+  font-weight: 600 !important;
+}
+
+/* Header & Search Bar */
+.header,
+.r-header,
+.top-bar {
+  background-color: var(--od-bg-alt) !important;
+  border-bottom: 1px solid var(--od-border) !important;
+  color: var(--od-fg) !important;
+}
+
+input.title-input {
+  background-color: var(--od-bg) !important;
+  color: var(--od-fg) !important;
+  border: 1px solid var(--od-border) !important;
+  border-radius: 4px !important;
+  font-family: ${resolvedFont} !important;
+  padding: 6px 10px !important;
+}
+
+input.title-input:focus {
+  border-color: var(--od-link) !important;
+  outline: none !important;
+}
+
+.search-bar input,
+.header input[type="search"],
+.header input {
+  background-color: var(--od-bg) !important;
+  color: var(--od-fg) !important;
+  border: 1px solid var(--od-border) !important;
+  border-radius: 4px !important;
+}
+
+.header button,
+.header a,
+.header .button {
+  color: var(--od-fg) !important;
+}
+
+.header button:hover,
+.header .button:hover {
+  background-color: var(--od-selection) !important;
+}
+
+.side-bar::-webkit-scrollbar,
+.note-list::-webkit-scrollbar {
+  width: 6px !important;
+}
+
+.side-bar::-webkit-scrollbar-track,
+.note-list::-webkit-scrollbar-track {
+  background: var(--od-scrollbar-track) !important;
+}
+
+.side-bar::-webkit-scrollbar-thumb,
+.note-list::-webkit-scrollbar-thumb {
+  background: var(--od-scrollbar-thumb) !important;
+  border-radius: 3px !important;
+}
+`;
+}
+
+// =================================================================
+// 3. MARKDOWN VIEWER & PDF RENDER ENGINE
 // =================================================================
 export function buildThemeCss(options: StyleOptions): string {
   const selectedTheme = themes[options.themeKey] || themes['atom-one-dark'];
