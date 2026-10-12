@@ -239,9 +239,463 @@ export function buildChromeCss(options: StyleOptions): string {
   }
   cssVariables += '}\n';
 
+  // Synchronize writing direction across the entire desktop application shell
+  let shellDirRules = '';
+  if (options.direction === 'rtl') {
+    shellDirRules = `
+      .side-bar, .r-sidebar, .rli-sideBar, div[toggleblock="1"],
+      .note-list, .r-note-list, .item-list, .note-list-top-bar,
+      .header, .r-header, .top-bar, .note-title-wrapper, input.title-input,
+      .editor-toolbar, .tag-bar, .tag-list, div[class*="banner"],
+      .synchronize-button, .sync-status-box, div.sync-report,
+      .r-panel, div.joplin-plugin-view, div.panel-container, div[class*="outline"] {
+        direction: rtl !important;
+        text-align: right !important;
+      }
+
+      .note-list .title, .note-list-item-title, .note-list span, .note-list div,
+      .side-bar span, .side-bar a, .side-bar div,
+      .r-panel *, div.joplin-plugin-view * {
+        text-align: right !important;
+      }
+
+      .note-list .list-item-container.selected,
+      .note-list .list-item.selected,
+      .note-list a.selected,
+      .note-list-item.selected {
+        border-right: 4px solid var(--od-h2) !important;
+        border-left: none !important;
+      }
+    `;
+  } else if (options.direction === 'auto') {
+    shellDirRules = `
+      .note-list .title, .note-list-item-title,
+      .side-bar span, .side-bar a,
+      input.title-input,
+      .r-panel a, .r-panel span {
+        unicode-bidi: plaintext !important;
+        text-align: start !important;
+      }
+    `;
+  } else {
+    shellDirRules = `
+      .side-bar, .r-sidebar, .rli-sideBar, div[toggleblock="1"],
+      .note-list, .r-note-list, .item-list, .note-list-top-bar,
+      .header, .r-header, .top-bar, .note-title-wrapper, input.title-input,
+      .editor-toolbar, .tag-bar, .tag-list, div[class*="banner"],
+      .synchronize-button, .sync-status-box, div.sync-report,
+      .r-panel, div.joplin-plugin-view, div.panel-container, div[class*="outline"] {
+        direction: ltr !important;
+        text-align: left !important;
+      }
+
+      .note-list .list-item-container.selected,
+      .note-list .list-item.selected,
+      .note-list a.selected,
+      .note-list-item.selected {
+        border-left: 4px solid var(--od-h2) !important;
+        border-right: none !important;
+      }
+    `;
+  }
+
   return `
 ${fontImport}
 ${cssVariables}
+${shellDirRules}
+
+/* =================================================================
+   UNIFIED DESKTOP SHELL CASCADE (OVERRIDING JOPLIN DARK/LIGHT CORE)
+   ================================================================= */
+
+/* --- 1. Left Sidebar (Notebooks & Tags Tree) --- */
+.side-bar,
+.r-sidebar,
+.rli-sideBar,
+div[toggleblock="1"] {
+  background-color: var(--od-bg-alt) !important;
+  color: var(--od-fg) !important;
+  font-family: ${resolvedFont} !important;
+}
+
+/* Force dark text on light themes & light text on dark themes across all sidebar children */
+.side-bar *,
+.r-sidebar *,
+.rli-sideBar *,
+div[toggleblock="1"] *,
+.folders *,
+.tags *,
+a.list-item,
+a.list-item *,
+.list-item-container * {
+  color: var(--od-fg) !important;
+}
+
+/* Force SVG folder icons, carets, and tree markers to inherit theme text color */
+.side-bar svg,
+.side-bar path,
+.side-bar i,
+.r-sidebar svg,
+.r-sidebar path,
+.rli-sideBar svg,
+.rli-sideBar path {
+  fill: var(--od-fg) !important;
+  stroke: var(--od-fg) !important;
+  color: var(--od-fg) !important;
+}
+
+.side-bar .list-item-container:hover,
+.side-bar .list-item:hover,
+.side-bar a:hover {
+  background-color: var(--od-selection) !important;
+}
+
+/* Active Selected Notebook Item */
+.side-bar .list-item-container.selected,
+.side-bar .list-item.selected,
+.side-bar a.selected,
+.folders .selected,
+.tags .selected {
+  background-color: var(--od-selection) !important;
+  color: var(--od-link) !important;
+  font-weight: 700 !important;
+}
+
+.side-bar .list-item-container.selected *,
+.side-bar .list-item.selected *,
+.folders .selected * {
+  color: var(--od-link) !important;
+}
+
+.side-bar .header,
+.side-bar .header span,
+.side-bar div[style*="font-weight: bold"],
+.side-bar .section-header {
+  color: var(--od-comment) !important;
+  font-size: 0.85em !important;
+  letter-spacing: 0.5px !important;
+  opacity: 0.85 !important;
+}
+
+.side-bar .item-count,
+.folders span[style*="opacity"] {
+  color: var(--od-comment) !important;
+  opacity: 0.8 !important;
+}
+
+/* --- 2. Bottom Left: Synchronize Area & Status Box --- */
+.synchronize-button,
+.sync-status-box,
+div.sync-report,
+div.side-bar > div:last-child {
+  background-color: var(--od-bg-alt) !important;
+  border-top: 1px solid var(--od-border) !important;
+}
+
+div.side-bar > div:last-child *,
+div.sync-report *,
+.sync-status-box * {
+  background-color: transparent !important;
+  color: var(--od-comment) !important;
+}
+
+.synchronize-button button,
+.sync-status-box button,
+div.side-bar > div:last-child button {
+  background-color: var(--od-bg) !important;
+  color: var(--od-fg) !important;
+  border: 1px solid var(--od-border) !important;
+  border-radius: 4px !important;
+  font-weight: 600 !important;
+  padding: 6px 12px !important;
+}
+
+.synchronize-button button:hover,
+div.side-bar > div:last-child button:hover {
+  background-color: var(--od-selection) !important;
+  border-color: var(--od-link) !important;
+  color: var(--od-link) !important;
+}
+
+/* --- 3. Note List Panel --- */
+.note-list,
+.r-note-list,
+.item-list {
+  background-color: var(--od-bg) !important;
+  border-right: 1px solid var(--od-border) !important;
+  border-left: 1px solid var(--od-border) !important;
+  font-family: ${resolvedFont} !important;
+}
+
+.note-list .list-item-container,
+.note-list .list-item,
+.note-list-item {
+  background-color: var(--od-bg) !important;
+  border-bottom: 1px solid var(--od-border) !important;
+}
+
+.note-list .list-item-container *,
+.note-list .title,
+.note-list-item-title,
+.note-list span {
+  color: var(--od-fg) !important;
+}
+
+.note-list .list-item-container:hover,
+.note-list .list-item:hover,
+.note-list a:hover {
+  background-color: var(--od-selection) !important;
+}
+
+/* Selected Note Item */
+.note-list .list-item-container.selected,
+.note-list .list-item.selected,
+.note-list a.selected,
+.note-list-item.selected {
+  background-color: var(--od-selection) !important;
+}
+
+.note-list .list-item-container.selected * {
+  color: var(--od-link) !important;
+  font-weight: 700 !important;
+}
+
+/* --- 4. Top Left: Note List Header Bar, Search Bar & Buttons --- */
+.note-list > div:first-child,
+.note-list-top-bar,
+.note-list .header,
+.search-bar {
+  background-color: var(--od-bg-alt) !important;
+  border-bottom: 1px solid var(--od-border) !important;
+}
+
+div.header a.button,
+div.header button,
+.note-list .header button,
+.note-list-top-bar button,
+a.button[title="New note"],
+a.button[title="New to-do"],
+.new-note-button,
+.new-todo-button {
+  background-color: var(--od-link) !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 4px !important;
+  font-weight: 600 !important;
+}
+
+div.header a.button:hover,
+div.header button:hover,
+.note-list .header button:hover,
+.note-list-top-bar button:hover {
+  background-color: var(--od-link-hover) !important;
+}
+
+.note-list-top-bar input,
+.note-list input[type="search"],
+.search-bar input,
+input[type="search"] {
+  background-color: var(--od-bg) !important;
+  color: var(--od-fg) !important;
+  border: 1px solid var(--od-border) !important;
+  border-radius: 4px !important;
+}
+
+.note-list-top-bar svg,
+.note-list-top-bar path,
+.search-bar svg,
+.search-bar path {
+  fill: var(--od-fg) !important;
+  color: var(--od-fg) !important;
+}
+
+/* --- 5. Top Right: Note Header Bar & Title Info Group --- */
+.header,
+.r-header,
+.top-bar,
+.note-title-wrapper,
+.note-title-info-group {
+  background-color: var(--od-bg-alt) !important;
+  border-bottom: 1px solid var(--od-border) !important;
+}
+
+.note-title-info-group *,
+.header span,
+.header div {
+  color: var(--od-fg) !important;
+}
+
+.note-title-info-group svg,
+.note-title-info-group path,
+.header svg,
+.header path {
+  fill: var(--od-fg) !important;
+  color: var(--od-fg) !important;
+}
+
+.header button,
+.header a,
+.header .button,
+button.toolbar-button {
+  background-color: transparent !important;
+  color: var(--od-fg) !important;
+}
+
+.header button:hover,
+.header a:hover,
+button.toolbar-button:hover {
+  background-color: var(--od-selection) !important;
+}
+
+input.title-input {
+  background-color: var(--od-bg) !important;
+  color: var(--od-fg) !important;
+  border: 1px solid var(--od-border) !important;
+  border-radius: 4px !important;
+  font-family: ${resolvedFont} !important;
+  padding: 6px 10px !important;
+}
+
+input.title-input:focus {
+  border-color: var(--od-link) !important;
+  outline: none !important;
+}
+
+/* --- 6. Markdown Editor Formatting Toolbar --- */
+.editor-toolbar,
+div.editor-toolbar,
+div[class*="editor-toolbar"],
+.r-editor-toolbar {
+  background-color: var(--od-bg-alt) !important;
+  border-bottom: 1px solid var(--od-border) !important;
+}
+
+.editor-toolbar *,
+.editor-toolbar div,
+.editor-toolbar button,
+.editor-toolbar a,
+.editor-toolbar span {
+  color: var(--od-fg) !important;
+  background-color: transparent !important;
+}
+
+.editor-toolbar svg,
+.editor-toolbar path,
+.editor-toolbar .icon,
+.editor-toolbar [class*="icon"] {
+  fill: var(--od-fg) !important;
+  color: var(--od-fg) !important;
+}
+
+.editor-toolbar button:hover,
+.editor-toolbar a:hover {
+  background-color: var(--od-selection) !important;
+  border-radius: 4px !important;
+}
+
+/* --- 7. Bottom: Tag Bar & Notification Banners --- */
+.tag-bar,
+div.tag-bar,
+.tag-list,
+.rli-editor > div > div > div div.tag-bar {
+  background-color: var(--od-bg-alt) !important;
+  border-top: 1px solid var(--od-border) !important;
+}
+
+.tag-bar * {
+  color: var(--od-fg) !important;
+}
+
+.tag-bar svg,
+.tag-bar path {
+  fill: var(--od-fg) !important;
+}
+
+.tag-bar input,
+.tag-bar .tag-input {
+  background-color: var(--od-bg) !important;
+  color: var(--od-fg) !important;
+  border: 1px solid var(--od-border) !important;
+}
+
+.tag-bar span,
+.tag-list span,
+.tag-list .tag-item {
+  background-color: var(--od-selection) !important;
+  color: var(--od-fg) !important;
+  border-radius: 4px !important;
+  padding: 2px 6px !important;
+}
+
+div[class*="banner"],
+div.updated-feature-banner,
+div.alert,
+div.info-box {
+  background-color: var(--od-bg-alt) !important;
+  border-top: 1px solid var(--od-border) !important;
+}
+
+div[class*="banner"] * {
+  color: var(--od-fg) !important;
+}
+
+div[class*="banner"] a,
+div[class*="banner"] button {
+  color: var(--od-link) !important;
+}
+
+/* --- 8. Right: Plugin Panels Outer Shell (Outline, Note Tabs) --- */
+.r-panel,
+div.joplin-plugin-view,
+div.panel-container,
+div[class*="outline"] {
+  background-color: var(--od-bg) !important;
+  border-left: 1px solid var(--od-border) !important;
+}
+
+.r-panel *,
+div.joplin-plugin-view * {
+  color: var(--od-fg) !important;
+}
+
+.r-panel svg,
+.r-panel path {
+  fill: var(--od-fg) !important;
+}
+
+.r-panel header,
+.r-panel .header,
+.r-panel > div:first-child {
+  background-color: var(--od-bg-alt) !important;
+  border-bottom: 1px solid var(--od-border) !important;
+}
+
+.r-panel iframe,
+div.joplin-plugin-view iframe {
+  background-color: var(--od-bg) !important;
+}
+
+/* --- 9. App-wide Custom Scrollbars --- */
+.side-bar::-webkit-scrollbar,
+.note-list::-webkit-scrollbar,
+.r-panel::-webkit-scrollbar {
+  width: 6px !important;
+}
+
+.side-bar::-webkit-scrollbar-track,
+.note-list::-webkit-scrollbar-track,
+.r-panel::-webkit-scrollbar-track {
+  background: var(--od-scrollbar-track) !important;
+}
+
+.side-bar::-webkit-scrollbar-thumb,
+.note-list::-webkit-scrollbar-thumb,
+.r-panel::-webkit-scrollbar-thumb {
+  background: var(--od-scrollbar-thumb) !important;
+  border-radius: 3px !important;
+}
+`;
+}
 
 /* =================================================================
    HIGH-SPECIFICITY DESKTOP CHROME THEME OVERRIDES
