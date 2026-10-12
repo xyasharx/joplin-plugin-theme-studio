@@ -244,9 +244,10 @@ export function buildChromeCss(options: StyleOptions): string {
     shellDirRules = `
       .side-bar, .r-sidebar, .rli-sideBar, div[toggleblock="1"],
       .note-list, .r-note-list, .item-list, .note-list-top-bar,
+      div.rli-noteList > div > div > div:first-child,
       .header, .r-header, .top-bar, .note-title-wrapper, input.title-input,
       .editor-toolbar, .tag-bar, .tag-list, div[class*="banner"],
-      .synchronize-button, .sync-status-box, div.sync-report,
+      div.rli-sideBar > div:last-child, .synchronize-button, .sync-status-box,
       .r-panel, div.joplin-plugin-view, div.panel-container, div[class*="outline"] {
         direction: rtl !important;
         text-align: right !important;
@@ -257,23 +258,27 @@ export function buildChromeCss(options: StyleOptions): string {
         text-align: right !important;
       }
 
-      .note-list .list-item-container.selected,
-      .note-list .list-item.selected,
-      .note-list a.selected,
-      .note-list-item.selected {
+      div.rli-noteList [aria-selected="true"],
+      div.rli-noteList .selected,
+      div.note-list [aria-selected="true"],
+      div.note-list .selected {
         border-right: 4px solid var(--od-h2) !important;
         border-left: none !important;
       }
 
-      /* RTL Sidebar Flex Order: Arrow on Right -> Icon -> Title in Center -> Count on Far Left */
+      /* RTL Sidebar Flex Order: Arrow on Right -> Icon -> Title -> Count on Far Left */
       .side-bar .list-item-container,
       .side-bar .list-item,
+      .rli-sideBar a,
       .folders a,
       .tags a {
         display: flex !important;
         flex-direction: row !important;
         align-items: center !important;
         width: 100% !important;
+        box-sizing: border-box !important;
+        padding-left: 8px !important;
+        padding-right: 6px !important;
       }
 
       .side-bar a > *:first-child,
@@ -281,7 +286,7 @@ export function buildChromeCss(options: StyleOptions): string {
       .side-bar i.fa-caret-right,
       .side-bar i.fa-caret-down {
         order: 1 !important;
-        margin-left: 4px !important;
+        margin-left: 6px !important;
         margin-right: 0 !important;
         flex-shrink: 0 !important;
       }
@@ -291,8 +296,8 @@ export function buildChromeCss(options: StyleOptions): string {
       .side-bar svg.icon,
       .side-bar a > span:nth-child(2) {
         order: 2 !important;
-        margin-left: 8px !important;
-        margin-right: 4px !important;
+        margin-left: 10px !important;
+        margin-right: 6px !important;
         flex-shrink: 0 !important;
       }
 
@@ -307,8 +312,8 @@ export function buildChromeCss(options: StyleOptions): string {
         white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
-        margin-left: 8px !important;
-        margin-right: 4px !important;
+        margin-left: 12px !important;
+        margin-right: 6px !important;
       }
 
       .note-count-label,
@@ -319,9 +324,9 @@ export function buildChromeCss(options: StyleOptions): string {
       .folders a span[style*="opacity"] {
         order: 4 !important;
         margin-right: auto !important;
-        margin-left: 0 !important;
+        margin-left: 4px !important;
         flex-shrink: 0 !important;
-        padding: 0 4px !important;
+        padding: 1px 6px !important;
       }
     `;
   } else if (options.direction === 'auto') {
@@ -338,57 +343,63 @@ export function buildChromeCss(options: StyleOptions): string {
     shellDirRules = `
       .side-bar, .r-sidebar, .rli-sideBar, div[toggleblock="1"],
       .note-list, .r-note-list, .item-list, .note-list-top-bar,
+      div.rli-noteList > div > div > div:first-child,
       .header, .r-header, .top-bar, .note-title-wrapper, input.title-input,
       .editor-toolbar, .tag-bar, .tag-list, div[class*="banner"],
-      .synchronize-button, .sync-status-box, div.sync-report,
+      div.rli-sideBar > div:last-child, .synchronize-button, .sync-status-box,
       .r-panel, div.joplin-plugin-view, div.panel-container, div[class*="outline"] {
         direction: ltr !important;
         text-align: left !important;
       }
 
-      .note-list .list-item-container.selected,
-      .note-list .list-item.selected,
-      .note-list a.selected,
-      .note-list-item.selected {
+      div.rli-noteList [aria-selected="true"],
+      div.rli-noteList .selected,
+      div.note-list [aria-selected="true"],
+      div.note-list .selected {
         border-left: 4px solid var(--od-h2) !important;
         border-right: none !important;
       }
 
-      /* LTR Sidebar Flex Order: Arrow -> Icon -> Title -> Count on Far Right */
       .side-bar .list-item-container,
       .side-bar .list-item,
+      .rli-sideBar a,
       .folders a,
       .tags a {
         display: flex !important;
         flex-direction: row !important;
         align-items: center !important;
         width: 100% !important;
+        box-sizing: border-box !important;
+        padding-left: 6px !important;
+        padding-right: 8px !important;
       }
 
       .side-bar a > *:first-child,
       .side-bar .arrow {
         order: 1 !important;
-        margin-right: 4px !important;
+        margin-right: 6px !important;
         margin-left: 0 !important;
       }
 
       .side-bar .icon {
         order: 2 !important;
-        margin-right: 8px !important;
-        margin-left: 4px !important;
+        margin-right: 10px !important;
+        margin-left: 6px !important;
       }
 
       .side-bar .title {
         order: 3 !important;
         flex-grow: 1 !important;
         text-align: left !important;
+        margin-right: 12px !important;
+        margin-left: 6px !important;
       }
 
       .note-count-label,
       .side-bar .note-count-label {
         order: 4 !important;
         margin-left: auto !important;
-        margin-right: 0 !important;
+        margin-right: 4px !important;
       }
     `;
   }
@@ -399,10 +410,10 @@ ${cssVariables}
 ${shellDirRules}
 
 /* =================================================================
-   RESIZABLE LAYOUT SPLITTERS & SHELL CONTAINER THEME OVERRIDES
+   UNIFIED DESKTOP SHELL CASCADE (OVERRIDING JOPLIN CORE DARK/LIGHT)
    ================================================================= */
 
-/* Overrides all inline-styled resizer splitters and divider bars */
+/* --- 1. Resizer Splitters & Root Container --- */
 div[style*="col-resize"],
 div[style*="row-resize"],
 div[style*="cursor: col-resize"],
@@ -418,7 +429,6 @@ div[class*="divider"] {
   opacity: 0.8 !important;
 }
 
-/* Joplin root layout background */
 .rli-root,
 #joplin-plugin-content,
 div[class*="rli-"] {
@@ -426,21 +436,17 @@ div[class*="rli-"] {
   color: var(--od-fg) !important;
 }
 
-/* =================================================================
-   UNIFIED DESKTOP SHELL CASCADE (OVERRIDING JOPLIN DARK/LIGHT CORE)
-   ================================================================= */
-
-/* --- 1. Left Sidebar (Notebooks & Tags Tree) --- */
+/* --- 2. Primary Left Sidebar --- */
 .side-bar,
 .r-sidebar,
 .rli-sideBar,
 div[toggleblock="1"] {
   background-color: var(--od-bg-alt) !important;
+  background: var(--od-bg-alt) !important;
   color: var(--od-fg) !important;
   font-family: ${resolvedFont} !important;
 }
 
-/* Force text colors across all sidebar children */
 .side-bar *,
 .r-sidebar *,
 .rli-sideBar *,
@@ -453,7 +459,6 @@ a.list-item *,
   color: var(--od-fg) !important;
 }
 
-/* Force SVG folder icons, carets, and tree markers to inherit theme text color */
 .side-bar svg,
 .side-bar path,
 .side-bar i,
@@ -472,19 +477,27 @@ a.list-item *,
   background-color: var(--od-selection) !important;
 }
 
-/* Active Selected Notebook Item */
+/* Active Selected Notebook Item (Overrides Inline rgb(0, 95, 184)) */
 .side-bar .list-item-container.selected,
 .side-bar .list-item.selected,
 .side-bar a.selected,
+.side-bar .selected,
+.side-bar div[class*="selected"],
+.rli-sideBar .selected,
+.rli-sideBar div[class*="selected"],
 .folders .selected,
+.folders div[class*="selected"],
 .tags .selected {
   background-color: var(--od-selection) !important;
+  background: var(--od-selection) !important;
   color: var(--od-link) !important;
   font-weight: 700 !important;
 }
 
-.side-bar .list-item-container.selected *,
-.side-bar .list-item.selected *,
+.side-bar .selected *,
+.side-bar div[class*="selected"] *,
+.rli-sideBar .selected *,
+.rli-sideBar div[class*="selected"] *,
 .folders .selected * {
   color: var(--od-link) !important;
 }
@@ -505,26 +518,39 @@ a.list-item *,
   opacity: 0.8 !important;
 }
 
-/* --- 2. Bottom Left: Synchronize Area & Status Box --- */
+/* --- 3. Bottom Left: Synchronize Panel & Status Box --- */
+div.rli-sideBar > div:last-child,
+div.rli-sideBar > div:nth-child(2),
+div.rli-sideBar > div[style*="border-top"],
+div.side-bar > div:last-child,
 .synchronize-button,
 .sync-status-box,
 div.sync-report,
-div.side-bar > div:last-child {
+div[class*="sync"],
+div[class*="Sync"] {
   background-color: var(--od-bg-alt) !important;
+  background: var(--od-bg-alt) !important;
   border-top: 1px solid var(--od-border) !important;
 }
 
-div.side-bar > div:last-child *,
-div.sync-report *,
-.sync-status-box * {
+div.rli-sideBar > div:last-child *,
+div.rli-sideBar > div:nth-child(2) *,
+div.rli-sideBar > div[style*="border-top"] *,
+.synchronize-button *,
+.sync-status-box *,
+div.sync-report * {
   background-color: transparent !important;
   color: var(--od-comment) !important;
 }
 
+div.rli-sideBar > div:last-child button,
+div.rli-sideBar > div:nth-child(2) button,
+div.rli-sideBar > div[style*="border-top"] button,
 .synchronize-button button,
 .sync-status-box button,
 div.side-bar > div:last-child button {
   background-color: var(--od-bg) !important;
+  background: var(--od-bg) !important;
   color: var(--od-fg) !important;
   border: 1px solid var(--od-border) !important;
   border-radius: 4px !important;
@@ -532,18 +558,22 @@ div.side-bar > div:last-child button {
   padding: 6px 12px !important;
 }
 
-.synchronize-button button:hover,
-div.side-bar > div:last-child button:hover {
+div.rli-sideBar > div:last-child button:hover,
+div.rli-sideBar > div:nth-child(2) button:hover,
+.synchronize-button button:hover {
   background-color: var(--od-selection) !important;
   border-color: var(--od-link) !important;
   color: var(--od-link) !important;
 }
 
-/* --- 3. Note List Panel --- */
+/* --- 4. Note List Panel & Items --- */
 .note-list,
 .r-note-list,
-.item-list {
+.item-list,
+div.rli-noteList,
+div.rli-noteList > div {
   background-color: var(--od-bg) !important;
+  background: var(--od-bg) !important;
   border-right: 1px solid var(--od-border) !important;
   border-left: 1px solid var(--od-border) !important;
   font-family: ${resolvedFont} !important;
@@ -551,7 +581,8 @@ div.side-bar > div:last-child button:hover {
 
 .note-list .list-item-container,
 .note-list .list-item,
-.note-list-item {
+.note-list-item,
+div.rli-noteList .list-item-container {
   background-color: var(--od-bg) !important;
   border-bottom: 1px solid var(--od-border) !important;
 }
@@ -569,50 +600,69 @@ div.side-bar > div:last-child button:hover {
   background-color: var(--od-selection) !important;
 }
 
-/* Selected Note Item */
-.note-list .list-item-container.selected,
-.note-list .list-item.selected,
-.note-list a.selected,
-.note-list-item.selected {
+/* Active Selected Note (Overrides Inline rgb(56, 62, 74)) */
+div.rli-noteList [aria-selected="true"],
+div.rli-noteList .selected,
+div.rli-noteList div[class*="selected"],
+div.rli-noteList .list-item-container.selected,
+div.rli-noteList .note-list-item.selected,
+div.note-list [aria-selected="true"],
+div.note-list .selected,
+div.note-list div[class*="selected"],
+div.note-list .list-item-container.selected,
+div.note-list .note-list-item.selected {
   background-color: var(--od-selection) !important;
+  background: var(--od-selection) !important;
 }
 
-.note-list .list-item-container.selected * {
+div.rli-noteList [aria-selected="true"] *,
+div.rli-noteList .selected *,
+div.note-list [aria-selected="true"] *,
+div.note-list .selected * {
   color: var(--od-link) !important;
   font-weight: 700 !important;
 }
 
-/* --- 4. Top Left: Note List Header Bar, Search Bar & Buttons --- */
-.note-list > div:first-child,
+/* --- 5. Top Left: Note List Header Bar, Buttons & Search --- */
+div.rli-noteList > div > div > div:first-child,
+div.rli-noteList .note-list-top-bar,
 .note-list-top-bar,
+.note-list > div:first-child,
 .note-list .header,
 .search-bar {
   background-color: var(--od-bg-alt) !important;
+  background: var(--od-bg-alt) !important;
   border-bottom: 1px solid var(--od-border) !important;
 }
 
+div.rli-noteList button.new-note-button,
+div.rli-noteList button.new-todo-button,
+button.new-note-button,
+button.new-todo-button,
 div.header a.button,
 div.header button,
 .note-list .header button,
 .note-list-top-bar button,
 a.button[title="New note"],
-a.button[title="New to-do"],
-.new-note-button,
-.new-todo-button {
+a.button[title="New to-do"] {
   background-color: var(--od-link) !important;
+  background: var(--od-link) !important;
   color: #ffffff !important;
   border: none !important;
   border-radius: 4px !important;
   font-weight: 600 !important;
 }
 
-div.header a.button:hover,
-div.header button:hover,
-.note-list .header button:hover,
-.note-list-top-bar button:hover {
+div.rli-noteList button.new-note-button:hover,
+div.rli-noteList button.new-todo-button:hover,
+button.new-note-button:hover,
+button.new-todo-button:hover {
   background-color: var(--od-link-hover) !important;
+  background: var(--od-link-hover) !important;
 }
 
+div.rli-noteList input,
+div.rli-noteList input[type="search"],
 .note-list-top-bar input,
 .note-list input[type="search"],
 .search-bar input,
@@ -623,6 +673,8 @@ input[type="search"] {
   border-radius: 4px !important;
 }
 
+div.rli-noteList svg,
+div.rli-noteList path,
 .note-list-top-bar svg,
 .note-list-top-bar path,
 .search-bar svg,
@@ -631,13 +683,14 @@ input[type="search"] {
   color: var(--od-fg) !important;
 }
 
-/* --- 5. Top Right: Note Header Bar & Title Info Group --- */
+/* --- 6. Top Right: Note Header Bar & Title Info Group --- */
 .header,
 .r-header,
 .top-bar,
 .note-title-wrapper,
 .note-title-info-group {
   background-color: var(--od-bg-alt) !important;
+  background: var(--od-bg-alt) !important;
   border-bottom: 1px solid var(--od-border) !important;
 }
 
@@ -683,12 +736,13 @@ input.title-input:focus {
   outline: none !important;
 }
 
-/* --- 6. Markdown Editor Formatting Toolbar --- */
+/* --- 7. Markdown Editor Formatting Toolbar --- */
 .editor-toolbar,
 div.editor-toolbar,
 div[class*="editor-toolbar"],
 .r-editor-toolbar {
   background-color: var(--od-bg-alt) !important;
+  background: var(--od-bg-alt) !important;
   border-bottom: 1px solid var(--od-border) !important;
 }
 
@@ -715,16 +769,27 @@ div[class*="editor-toolbar"],
   border-radius: 4px !important;
 }
 
-/* --- 7. Bottom: Tag Bar & Notification Banners --- */
+/* --- 8. Bottom: Tag Bar & Notification Banners --- */
 .tag-bar,
 div.tag-bar,
 .tag-list,
-.rli-editor > div > div > div div.tag-bar {
+div[class*="tag"],
+div[class*="banner"],
+div.updated-feature-banner,
+div.alert,
+div.info-box,
+.rli-editor > div > div > div:has(.tag-bar),
+.rli-editor > div > div > div:has(div[class*="banner"]),
+.rli-editor > div > div > div:last-child {
   background-color: var(--od-bg-alt) !important;
+  background: var(--od-bg-alt) !important;
   border-top: 1px solid var(--od-border) !important;
+  color: var(--od-fg) !important;
 }
 
-.tag-bar * {
+.tag-bar *,
+div[class*="banner"] *,
+div.updated-feature-banner * {
   color: var(--od-fg) !important;
 }
 
@@ -749,29 +814,21 @@ div.tag-bar,
   padding: 2px 6px !important;
 }
 
-div[class*="banner"],
-div.updated-feature-banner,
-div.alert,
-div.info-box {
-  background-color: var(--od-bg-alt) !important;
-  border-top: 1px solid var(--od-border) !important;
-}
-
-div[class*="banner"] * {
-  color: var(--od-fg) !important;
-}
-
 div[class*="banner"] a,
-div[class*="banner"] button {
+div[class*="banner"] button,
+div.updated-feature-banner a,
+div.updated-feature-banner button {
   color: var(--od-link) !important;
+  font-weight: 700 !important;
 }
 
-/* --- 8. Right: Plugin Panels Outer Shell (Outline, Note Tabs) --- */
+/* --- 9. Right: Plugin Panels Outer Shell (Outline, Note Tabs) --- */
 .r-panel,
 div.joplin-plugin-view,
 div.panel-container,
 div[class*="outline"] {
   background-color: var(--od-bg) !important;
+  background: var(--od-bg) !important;
   border-left: 1px solid var(--od-border) !important;
 }
 
@@ -797,7 +854,7 @@ div.joplin-plugin-view iframe {
   background-color: var(--od-bg) !important;
 }
 
-/* --- 9. App-wide Custom Scrollbars --- */
+/* --- 10. App-wide Custom Scrollbars --- */
 .side-bar::-webkit-scrollbar,
 .note-list::-webkit-scrollbar,
 .r-panel::-webkit-scrollbar {
