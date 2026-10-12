@@ -239,25 +239,26 @@ export function buildChromeCss(options: StyleOptions): string {
   }
   cssVariables += '}\n';
 
+  // BiDi synchronization: Protects UI toolbars, headers, and tree indentation
   let shellDirRules = '';
   if (options.direction === 'rtl') {
     shellDirRules = `
-      .side-bar, .r-sidebar, .rli-sideBar, div[toggleblock="1"],
-      .note-list, .r-note-list, .item-list, .note-list-top-bar,
-      div.rli-noteList > div > div > div:first-child,
-      .header, .r-header, .top-bar, .note-title-wrapper, input.title-input,
-      .editor-toolbar, .tag-bar, .tag-list, div[class*="banner"],
-      div.rli-sideBar > div:last-child, .synchronize-button, .sync-status-box,
-      .r-panel, div.joplin-plugin-view, div.panel-container, div[class*="outline"] {
+      /* Title input adheres to RTL */
+      input.title-input {
         direction: rtl !important;
         text-align: right !important;
       }
 
-      .note-list .title, .note-list-item-title, .note-list span, .note-list div,
-      .r-panel *, div.joplin-plugin-view * {
-        text-align: right !important;
+      /* Note List item titles align naturally using Unicode BiDi */
+      .note-list .title,
+      .note-list-item-title,
+      .note-list span,
+      .note-list div {
+        unicode-bidi: plaintext !important;
+        text-align: start !important;
       }
 
+      /* Active Note Indicator flips to right border in RTL */
       div.rli-noteList [aria-selected="true"],
       div.rli-noteList .selected,
       div.note-list [aria-selected="true"],
@@ -266,88 +267,29 @@ export function buildChromeCss(options: StyleOptions): string {
         border-left: none !important;
       }
 
-      /* RTL Sidebar Flex Order: Arrow on Right -> Icon -> Title -> Count on Far Left */
-      .side-bar .list-item-container,
-      .side-bar .list-item,
-      .rli-sideBar a,
-      .folders a,
-      .tags a {
-        display: flex !important;
-        flex-direction: row !important;
-        align-items: center !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-        padding-left: 8px !important;
-        padding-right: 6px !important;
-      }
-
-      .side-bar a > *:first-child,
-      .side-bar .arrow,
-      .side-bar i.fa-caret-right,
-      .side-bar i.fa-caret-down {
-        order: 1 !important;
-        margin-left: 6px !important;
-        margin-right: 0 !important;
-        flex-shrink: 0 !important;
-      }
-
-      .side-bar .icon,
-      .side-bar span.icon,
-      .side-bar svg.icon,
-      .side-bar a > span:nth-child(2) {
-        order: 2 !important;
-        margin-left: 10px !important;
-        margin-right: 6px !important;
-        flex-shrink: 0 !important;
-      }
-
+      /* Sidebar titles use BiDi without breaking tree indentation or flex order */
       .side-bar .title,
       .side-bar span.title,
       .folders a span:not(.note-count-label):not(.icon),
       .tags a span:not(.note-count-label):not(.icon) {
-        order: 3 !important;
-        flex-grow: 1 !important;
-        text-align: right !important;
-        unicode-bidi: isolate !important;
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        margin-left: 12px !important;
-        margin-right: 6px !important;
-      }
-
-      .note-count-label,
-      .side-bar .note-count-label,
-      div[class*="NoteCount"],
-      .side-bar a > div:last-child,
-      .side-bar a > span:last-child,
-      .folders a span[style*="opacity"] {
-        order: 4 !important;
-        margin-right: auto !important;
-        margin-left: 4px !important;
-        flex-shrink: 0 !important;
-        padding: 1px 6px !important;
+        unicode-bidi: plaintext !important;
+        text-align: start !important;
       }
     `;
   } else if (options.direction === 'auto') {
     shellDirRules = `
-      .note-list .title, .note-list-item-title,
-      .side-bar span, .side-bar a,
       input.title-input,
-      .r-panel a, .r-panel span {
+      .note-list .title,
+      .note-list-item-title,
+      .side-bar .title,
+      .side-bar span.title {
         unicode-bidi: plaintext !important;
         text-align: start !important;
       }
     `;
   } else {
     shellDirRules = `
-      .side-bar, .r-sidebar, .rli-sideBar, div[toggleblock="1"],
-      .note-list, .r-note-list, .item-list, .note-list-top-bar,
-      div.rli-noteList > div > div > div:first-child,
-      .header, .r-header, .top-bar, .note-title-wrapper, input.title-input,
-      .editor-toolbar, .tag-bar, .tag-list, div[class*="banner"],
-      div.rli-sideBar > div:last-child, .synchronize-button, .sync-status-box,
-      .r-panel, div.joplin-plugin-view, div.panel-container, div[class*="outline"] {
+      input.title-input {
         direction: ltr !important;
         text-align: left !important;
       }
@@ -358,48 +300,6 @@ export function buildChromeCss(options: StyleOptions): string {
       div.note-list .selected {
         border-left: 4px solid var(--od-h2) !important;
         border-right: none !important;
-      }
-
-      .side-bar .list-item-container,
-      .side-bar .list-item,
-      .rli-sideBar a,
-      .folders a,
-      .tags a {
-        display: flex !important;
-        flex-direction: row !important;
-        align-items: center !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-        padding-left: 6px !important;
-        padding-right: 8px !important;
-      }
-
-      .side-bar a > *:first-child,
-      .side-bar .arrow {
-        order: 1 !important;
-        margin-right: 6px !important;
-        margin-left: 0 !important;
-      }
-
-      .side-bar .icon {
-        order: 2 !important;
-        margin-right: 10px !important;
-        margin-left: 6px !important;
-      }
-
-      .side-bar .title {
-        order: 3 !important;
-        flex-grow: 1 !important;
-        text-align: left !important;
-        margin-right: 12px !important;
-        margin-left: 6px !important;
-      }
-
-      .note-count-label,
-      .side-bar .note-count-label {
-        order: 4 !important;
-        margin-left: auto !important;
-        margin-right: 4px !important;
       }
     `;
   }
@@ -516,6 +416,17 @@ a.list-item *,
 .folders span[style*="opacity"] {
   color: var(--od-comment) !important;
   opacity: 0.8 !important;
+}
+
+/* Ensure clean spacing between folder icons, emojis, and titles without breaking tree indentation */
+.side-bar .icon,
+.side-bar span.icon,
+.side-bar svg.icon,
+.side-bar span[role="img"],
+.folders a span[role="img"] {
+  margin-left: 6px !important;
+  margin-right: 6px !important;
+  display: inline-block !important;
 }
 
 /* --- 3. Bottom Left: Synchronize Panel & Status Box --- */
