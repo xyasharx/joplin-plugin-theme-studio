@@ -253,7 +253,6 @@ export function buildChromeCss(options: StyleOptions): string {
       }
 
       .note-list .title, .note-list-item-title, .note-list span, .note-list div,
-      .side-bar span, .side-bar a, .side-bar div,
       .r-panel *, div.joplin-plugin-view * {
         text-align: right !important;
       }
@@ -264,6 +263,65 @@ export function buildChromeCss(options: StyleOptions): string {
       .note-list-item.selected {
         border-right: 4px solid var(--od-h2) !important;
         border-left: none !important;
+      }
+
+      /* RTL Sidebar Flex Order: Arrow on Right -> Icon -> Title in Center -> Count on Far Left */
+      .side-bar .list-item-container,
+      .side-bar .list-item,
+      .folders a,
+      .tags a {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        width: 100% !important;
+      }
+
+      .side-bar a > *:first-child,
+      .side-bar .arrow,
+      .side-bar i.fa-caret-right,
+      .side-bar i.fa-caret-down {
+        order: 1 !important;
+        margin-left: 4px !important;
+        margin-right: 0 !important;
+        flex-shrink: 0 !important;
+      }
+
+      .side-bar .icon,
+      .side-bar span.icon,
+      .side-bar svg.icon,
+      .side-bar a > span:nth-child(2) {
+        order: 2 !important;
+        margin-left: 8px !important;
+        margin-right: 4px !important;
+        flex-shrink: 0 !important;
+      }
+
+      .side-bar .title,
+      .side-bar span.title,
+      .folders a span:not(.note-count-label):not(.icon),
+      .tags a span:not(.note-count-label):not(.icon) {
+        order: 3 !important;
+        flex-grow: 1 !important;
+        text-align: right !important;
+        unicode-bidi: isolate !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        margin-left: 8px !important;
+        margin-right: 4px !important;
+      }
+
+      .note-count-label,
+      .side-bar .note-count-label,
+      div[class*="NoteCount"],
+      .side-bar a > div:last-child,
+      .side-bar a > span:last-child,
+      .folders a span[style*="opacity"] {
+        order: 4 !important;
+        margin-right: auto !important;
+        margin-left: 0 !important;
+        flex-shrink: 0 !important;
+        padding: 0 4px !important;
       }
     `;
   } else if (options.direction === 'auto') {
@@ -295,6 +353,43 @@ export function buildChromeCss(options: StyleOptions): string {
         border-left: 4px solid var(--od-h2) !important;
         border-right: none !important;
       }
+
+      /* LTR Sidebar Flex Order: Arrow -> Icon -> Title -> Count on Far Right */
+      .side-bar .list-item-container,
+      .side-bar .list-item,
+      .folders a,
+      .tags a {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        width: 100% !important;
+      }
+
+      .side-bar a > *:first-child,
+      .side-bar .arrow {
+        order: 1 !important;
+        margin-right: 4px !important;
+        margin-left: 0 !important;
+      }
+
+      .side-bar .icon {
+        order: 2 !important;
+        margin-right: 8px !important;
+        margin-left: 4px !important;
+      }
+
+      .side-bar .title {
+        order: 3 !important;
+        flex-grow: 1 !important;
+        text-align: left !important;
+      }
+
+      .note-count-label,
+      .side-bar .note-count-label {
+        order: 4 !important;
+        margin-left: auto !important;
+        margin-right: 0 !important;
+      }
     `;
   }
 
@@ -302,6 +397,34 @@ export function buildChromeCss(options: StyleOptions): string {
 ${fontImport}
 ${cssVariables}
 ${shellDirRules}
+
+/* =================================================================
+   RESIZABLE LAYOUT SPLITTERS & SHELL CONTAINER THEME OVERRIDES
+   ================================================================= */
+
+/* Overrides all inline-styled resizer splitters and divider bars */
+div[style*="col-resize"],
+div[style*="row-resize"],
+div[style*="cursor: col-resize"],
+div[style*="cursor: row-resize"],
+.rli-splitter,
+.splitter,
+div[class*="splitter"],
+div[class*="resizer"],
+div[class*="divider"] {
+  background-color: var(--od-border) !important;
+  background: var(--od-border) !important;
+  border-color: var(--od-border) !important;
+  opacity: 0.8 !important;
+}
+
+/* Joplin root layout background */
+.rli-root,
+#joplin-plugin-content,
+div[class*="rli-"] {
+  background-color: var(--od-bg) !important;
+  color: var(--od-fg) !important;
+}
 
 /* =================================================================
    UNIFIED DESKTOP SHELL CASCADE (OVERRIDING JOPLIN DARK/LIGHT CORE)
