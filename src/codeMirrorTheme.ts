@@ -39,11 +39,24 @@ module.exports = {
             if (chromeCss) {
               const panelCss = `
                 ${chromeCss}
-                body, html {
+                body, html, #root, #app, .panel, header, .header {
                   background-color: var(--od-bg) !important;
                   color: var(--od-fg) !important;
                 }
-                a, span, div, li, p, input {
+                header, .header, .search-container, .top-bar {
+                  background-color: var(--od-bg-alt) !important;
+                  border-bottom: 1px solid var(--od-border) !important;
+                }
+                input {
+                  background-color: var(--od-bg) !important;
+                  color: var(--od-fg) !important;
+                  border: 1px solid var(--od-border) !important;
+                }
+                a, span, div, li, p, i, input {
+                  color: var(--od-fg) !important;
+                }
+                svg, path {
+                  fill: var(--od-fg) !important;
                   color: var(--od-fg) !important;
                 }
                 a:hover, .header-list-item:hover, li:hover {
@@ -58,7 +71,7 @@ module.exports = {
             }
           }
         } catch (_err) {
-          // Cross-origin boundaries (if any exist) are safely ignored
+          // Cross-origin boundaries are safely ignored
         }
       });
     }
