@@ -14,9 +14,11 @@ function getMemoizedViewerCss(pluginOptions: any): string {
   const lineHeight = pluginOptions.settingValue('lineHeight') || '1.75';
   const contentMaxWidth = pluginOptions.settingValue('contentMaxWidth') || 'full';
   const pdfExportStyle = pluginOptions.settingValue('pdfExportStyle') || 'exact';
+  const headingSizePreset = pluginOptions.settingValue('headingSizePreset') || 'balanced';
+  const customHeadingSizes = pluginOptions.settingValue('customHeadingSizes') || '1.75em, 1.42em, 1.25em, 1.12em, 1.05em, 1.0em';
 
   // Fast cache key comparison
-  const cacheKey = `${themeKey}|${direction}|${fontPreset}|${fontSize}|${lineHeight}|${fontFamily}|${codeFontPreset}|${codeFont}|${contentMaxWidth}|${pdfExportStyle}`;
+  const cacheKey = `${themeKey}|${direction}|${fontPreset}|${fontSize}|${lineHeight}|${fontFamily}|${codeFontPreset}|${codeFont}|${contentMaxWidth}|${pdfExportStyle}|${headingSizePreset}|${customHeadingSizes}`;
 
   if (cacheKey !== lastViewerCacheKey || !cachedViewerCss) {
     lastViewerCacheKey = cacheKey;
@@ -31,6 +33,8 @@ function getMemoizedViewerCss(pluginOptions: any): string {
       lineHeight,
       contentMaxWidth,
       pdfExportStyle,
+      headingSizePreset,
+      customHeadingSizes,
     });
   }
 
