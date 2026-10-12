@@ -11,6 +11,59 @@ export interface StyleOptions {
   lineHeight: string;
   contentMaxWidth: string;
   pdfExportStyle: string;
+  headingSizePreset?: string;
+  customHeadingSizes?: string;
+}
+
+function resolveHeadingSizes(options: StyleOptions) {
+  const defaultSizes = {
+    h1: '1.75em',
+    h2: '1.42em',
+    h3: '1.25em',
+    h4: '1.12em',
+    h5: '1.05em',
+    h6: '1.0em',
+  };
+
+  if (options.headingSizePreset === 'large') {
+    return {
+      h1: '2.15em',
+      h2: '1.7em',
+      h3: '1.4em',
+      h4: '1.22em',
+      h5: '1.1em',
+      h6: '1.0em',
+    };
+  }
+
+  if (options.headingSizePreset === 'compact') {
+    return {
+      h1: '1.5em',
+      h2: '1.3em',
+      h3: '1.18em',
+      h4: '1.08em',
+      h5: '1.02em',
+      h6: '0.95em',
+    };
+  }
+
+  if (options.headingSizePreset === 'custom' && options.customHeadingSizes) {
+    const parts = options.customHeadingSizes
+      .split(',')
+      .map((s) => s.replace(/h[1-6]:?/gi, '').trim())
+      .filter((s) => s.length > 0);
+
+    return {
+      h1: parts[0] || defaultSizes.h1,
+      h2: parts[1] || defaultSizes.h2,
+      h3: parts[2] || defaultSizes.h3,
+      h4: parts[3] || defaultSizes.h4,
+      h5: parts[4] || defaultSizes.h5,
+      h6: parts[5] || defaultSizes.h6,
+    };
+  }
+
+  return defaultSizes;
 }
 
 function resolveFonts(options: StyleOptions) {
@@ -873,6 +926,7 @@ div.joplin-plugin-view iframe {
 export function buildThemeCss(options: StyleOptions): string {
   const selectedTheme = themes[options.themeKey] || themes['atom-one-dark'];
   const { fontImport, resolvedFont, resolvedCodeFont } = resolveFonts(options);
+  const headingSizes = resolveHeadingSizes(options);
 
   let cssVariables = ':root {\n';
   for (const [key, value] of Object.entries(selectedTheme.variables)) {
@@ -1028,7 +1082,7 @@ body#tinymce, body, #rendered-md {
 
 body#tinymce h1, #rendered-md h1 {
   color: var(--od-h1) !important;
-  font-size: 1.75em !important;
+  font-size: ${headingSizes.h1} !important;
   font-weight: 800 !important;
   padding: 0 0 8px 0 !important;
   margin: 32px 0 20px 0 !important;
@@ -1037,15 +1091,15 @@ body#tinymce h1, #rendered-md h1 {
 
 body#tinymce h2, #rendered-md h2 {
   color: var(--od-h2) !important;
-  font-size: 1.42em !important;
+  font-size: ${headingSizes.h2} !important;
   font-weight: 700 !important;
   margin: 28px 0 18px 0 !important;
 }
 
-body#tinymce h3, #rendered-md h3 { color: var(--od-h3) !important; font-size: 1.25em !important; font-weight: 600 !important; margin: 24px 0 14px 0 !important; }
-body#tinymce h4, #rendered-md h4 { color: var(--od-h4) !important; font-size: 1.12em !important; font-weight: 600 !important; margin: 20px 0 12px 0 !important; }
-body#tinymce h5, #rendered-md h5 { color: var(--od-h5) !important; font-size: 1.05em !important; font-weight: 600 !important; margin: 18px 0 10px 0 !important; }
-body#tinymce h6, #rendered-md h6 { color: var(--od-h6) !important; font-size: 1.0em !important; font-weight: 700 !important; margin: 16px 0 10px 0 !important; }
+body#tinymce h3, #rendered-md h3 { color: var(--od-h3) !important; font-size: ${headingSizes.h3} !important; font-weight: 600 !important; margin: 24px 0 14px 0 !important; }
+body#tinymce h4, #rendered-md h4 { color: var(--od-h4) !important; font-size: ${headingSizes.h4} !important; font-weight: 600 !important; margin: 20px 0 12px 0 !important; }
+body#tinymce h5, #rendered-md h5 { color: var(--od-h5) !important; font-size: ${headingSizes.h5} !important; font-weight: 600 !important; margin: 18px 0 10px 0 !important; }
+body#tinymce h6, #rendered-md h6 { color: var(--od-h6) !important; font-size: ${headingSizes.h6} !important; font-weight: 700 !important; margin: 16px 0 10px 0 !important; }
 
 #rendered-md li, body#tinymce li { margin-bottom: 0.45em !important; line-height: ${options.lineHeight} !important; }
 #rendered-md li::marker, body#tinymce li::marker { color: var(--od-h2) !important; font-weight: bold !important; }
@@ -1303,9 +1357,9 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
     max-width: 100% !important;
     overflow-x: hidden !important;
   }
-  body#tinymce h1, #rendered-md h1 { font-size: 1.6em !important; margin: 20px 0 12px 0 !important; }
-  body#tinymce h2, #rendered-md h2 { font-size: 1.35em !important; margin: 18px 0 10px 0 !important; }
-  body#tinymce h3, #rendered-md h3 { font-size: 1.2em !important; margin: 16px 0 8px 0 !important; }
+  body#tinymce h1, #rendered-md h1 { font-size: calc(${headingSizes.h1} * 0.9) !important; margin: 20px 0 12px 0 !important; }
+  body#tinymce h2, #rendered-md h2 { font-size: calc(${headingSizes.h2} * 0.92) !important; margin: 18px 0 10px 0 !important; }
+  body#tinymce h3, #rendered-md h3 { font-size: ${headingSizes.h3} !important; margin: 16px 0 8px 0 !important; }
   #rendered-md img, body#tinymce img { max-height: 420px !important; }
 
   body#tinymce pre:not(.mermaid):not(.joplin-source),
