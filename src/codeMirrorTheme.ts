@@ -60,6 +60,23 @@ module.exports = {
           cachedViewerCss = viewerCss;
           injectIntoTinyMCE(viewerCss);
         }
+
+        // 3. Apply to Application Shell (Sidebar, Note List, Toolbar) in real-time
+        if (typeof document !== 'undefined') {
+          let chromeStyleEl = document.getElementById('theme-studio-chrome-styles') as HTMLStyleElement | null;
+          if (res.chromeCss) {
+            if (!chromeStyleEl) {
+              chromeStyleEl = document.createElement('style');
+              chromeStyleEl.id = 'theme-studio-chrome-styles';
+              document.head.appendChild(chromeStyleEl);
+            }
+            if (chromeStyleEl.textContent !== res.chromeCss) {
+              chromeStyleEl.textContent = res.chromeCss;
+            }
+          } else if (chromeStyleEl) {
+            chromeStyleEl.textContent = '';
+          }
+        }
       } catch (_err) {
         // Silently recover if messaging is disconnected during note transition
       }
