@@ -63,6 +63,29 @@ module.exports = {
   default: function (_context: any) {
     return {
       plugin: function (markdownIt: any, pluginOptions: any) {
+        // Automatically inject dir="auto" on structural blocks in Auto BiDi mode
+        markdownIt.core.ruler.push('theme_studio_bidi_tagger', (state: any) => {
+          const direction = readSetting(pluginOptions, 'direction', 'ltr');
+          if (direction !== 'auto') return;
+
+          const blockTokenTypes = [
+            'paragraph_open',
+            'heading_open',
+            'bullet_list_open',
+            'ordered_list_open',
+            'list_item_open',
+            'blockquote_open',
+            'table_open',
+          ];
+
+          for (let i = 0; i < state.tokens.length; i++) {
+            const token = state.tokens[i];
+            if (blockTokenTypes.includes(token.type)) {
+              token.attrSet('dir', 'auto');
+            }
+          }
+        });
+
         markdownIt.core.ruler.push('theme_studio_injector', (state: any) => {
           // Instant O(1) retrieval from memoized cache
           const css = getMemoizedViewerCss(pluginOptions);
