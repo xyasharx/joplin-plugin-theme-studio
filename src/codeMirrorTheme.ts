@@ -6,6 +6,8 @@ module.exports = {
     let cachedPanelCss = '';
     let isInitialized = false;
 
+    const watchedIframes = new WeakSet<HTMLIFrameElement>();
+
     function computePanelCss(chromeCss: string): string {
       if (!chromeCss) return '';
       return `
@@ -46,6 +48,71 @@ module.exports = {
       `;
     }
 
+    function applyTinyMceStyles(doc: Document): boolean {
+      if (!doc || !doc.head) return false;
+      const isReady =
+        doc.body?.id === 'tinymce' ||
+        doc.body?.classList?.contains('mce-content-body') ||
+        !!doc.querySelector?.('#tinymce');
+
+      if (!isReady) return false;
+
+      let styleEl = doc.getElementById('theme-studio-tinymce-styles') as HTMLStyleElement | null;
+      if (!styleEl) {
+        styleEl = doc.createElement('style');
+        styleEl.id = 'theme-studio-tinymce-styles';
+        doc.head.appendChild(styleEl);
+      }
+      if (cachedViewerCss && styleEl.textContent !== cachedViewerCss) {
+        styleEl.textContent = cachedViewerCss;
+      }
+      return true;
+    }
+
+    function watchTinyMceIframe(iframe: HTMLIFrameElement): void {
+      if (watchedIframes.has(iframe)) return;
+      watchedIframes.add(iframe);
+
+      let attempts = 0;
+      const maxAttempts = 30; // 30 * 50ms = 1.5 seconds maximum timeout
+
+      const intervalId = setInterval(() => {
+        attempts++;
+        try {
+          if (!iframe.isConnected) {
+            clearInterval(intervalId);
+            watchedIframes.delete(iframe);
+            return;
+          }
+
+          const doc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (doc && applyTinyMceStyles(doc)) {
+            clearInterval(intervalId);
+            return;
+          }
+        } catch (_err) {
+          // Ignore transient security boundaries during document initialization
+        }
+
+        if (attempts >= maxAttempts) {
+          clearInterval(intervalId);
+        }
+      }, 50);
+
+      iframe.addEventListener(
+        'load',
+        () => {
+          try {
+            const doc = iframe.contentDocument || iframe.contentWindow?.document;
+            if (doc && applyTinyMceStyles(doc)) {
+              clearInterval(intervalId);
+            }
+          } catch (_err) {}
+        },
+        { once: true }
+      );
+    }
+
     function injectIntoIframes(viewerCss: string, panelCss: string): void {
       if (typeof document === 'undefined') return;
 
@@ -53,25 +120,21 @@ module.exports = {
       iframes.forEach((iframe: HTMLIFrameElement) => {
         try {
           const doc = iframe.contentDocument || iframe.contentWindow?.document;
-          if (!doc || !doc.head) return;
 
-          // 1. Rich Text Editor (TinyMCE)
-          if (
-            doc.body?.id === 'tinymce' ||
-            doc.querySelector('#tinymce') ||
-            doc.body?.classList.contains('mce-content-body')
-          ) {
-            let styleEl = doc.getElementById('theme-studio-tinymce-styles') as HTMLStyleElement | null;
-            if (!styleEl) {
-              styleEl = doc.createElement('style');
-              styleEl.id = 'theme-studio-tinymce-styles';
-              doc.head.appendChild(styleEl);
+          const isTinyMce =
+            iframe.classList?.contains('tox-edit-area__iframe') ||
+            iframe.id?.includes('tinymce') ||
+            !!iframe.closest?.('.tox, .tox-tinymce, .joplin-tinymce') ||
+            doc?.body?.id === 'tinymce' ||
+            doc?.body?.classList?.contains('mce-content-body') ||
+            !!doc?.querySelector?.('#tinymce');
+
+          if (isTinyMce) {
+            if (!doc || !applyTinyMceStyles(doc)) {
+              watchTinyMceIframe(iframe);
             }
-            if (viewerCss && styleEl.textContent !== viewerCss) {
-              styleEl.textContent = viewerCss;
-            }
-          } else {
-            // 2. Plugin Webview Panels (Outline, Note Tabs, etc.)
+          } else if (doc && doc.head) {
+            // Plugin Webview Panels (Outline, Note Tabs, etc.)
             let panelStyleEl = doc.getElementById('theme-studio-panel-styles') as HTMLStyleElement | null;
             if (!panelStyleEl) {
               panelStyleEl = doc.createElement('style');
@@ -87,7 +150,6 @@ module.exports = {
             }
           }
         } catch (err) {
-          // Cross-origin boundaries restrict document access; log any unexpected DOM issues
           if (!(err instanceof DOMException && err.name === 'SecurityError')) {
             console.debug('[Theme Studio] Could not inject styles into iframe:', err);
           }
@@ -142,18 +204,26 @@ module.exports = {
           }
         }
 
-        // 3. Inject styles into TinyMCE and all Plugin Panels (Outline, etc.)
+        // 3. Inject styles into TinyMCE and all Plugin Panels
         injectIntoIframes(cachedViewerCss, cachedPanelCss);
       } catch (err) {
         console.warn('[Theme Studio] Failed to retrieve or update styles from main process:', err);
       }
     }
 
+    function isCodeMirrorKeystrokeMutation(mutation: MutationRecord): boolean {
+      const target = mutation.target as HTMLElement | null;
+      if (!target) return false;
+      return !!(
+        target.closest?.('.cm-editor, .cm-content, .CodeMirror-lines, .CodeMirror') ||
+        target.classList?.contains?.('cm-line')
+      );
+    }
+
     return {
       plugin: async function (_codeMirror: any) {
         await updateStyles();
 
-        // Prevent duplicate observers and event listeners on repeated note switches
         if (isInitialized) {
           return;
         }
@@ -166,24 +236,13 @@ module.exports = {
         if (typeof document !== 'undefined' && document.body) {
           let rafId: number | null = null;
           const observer = new MutationObserver((mutations: MutationRecord[]) => {
-            // Strictly ignore CodeMirror keystrokes and line updates; only react when an iframe mounts
-            let hasIframeMutation = false;
-            for (const mutation of mutations) {
-              for (let i = 0; i < mutation.addedNodes.length; i++) {
-                const node = mutation.addedNodes[i];
-                if (node.nodeType === 1) { // ELEMENT_NODE
-                  if (node.nodeName === 'IFRAME' || (node as Element).querySelector?.('iframe')) {
-                    hasIframeMutation = true;
-                    break;
-                  }
-                }
-              }
-              if (hasIframeMutation) break;
+            // If all mutations occurred strictly inside CodeMirror text nodes, bypass entirely
+            const isAllCodeMirror = mutations.every(isCodeMirrorKeystrokeMutation);
+            if (isAllCodeMirror) {
+              return;
             }
 
-            if (!hasIframeMutation) return;
-
-            // Batch and debounce iframe injections to avoid layout thrashing
+            // Batched synchronization for editor toggles, sidebar clicks, and panel insertions
             if (rafId !== null) cancelAnimationFrame(rafId);
             rafId = requestAnimationFrame(() => {
               rafId = null;
