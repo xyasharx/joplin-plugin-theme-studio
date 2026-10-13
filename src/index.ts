@@ -6,15 +6,24 @@ joplin.plugins.register({
   onStart: async function () {
     let defaultDirection = 'ltr';
     let defaultFontPreset = 'inter';
+    let lastWrittenChromeCss: string | null = null;
 
     try {
-      const userLocale: string = await joplin.settings.globalValue('locale');
+      let userLocale = '';
+      if (typeof joplin.settings.globalValues === 'function') {
+        const values = await joplin.settings.globalValues(['locale']);
+        userLocale = values && values[0] ? String(values[0]) : '';
+      } else if (typeof joplin.settings.globalValue === 'function') {
+        userLocale = await joplin.settings.globalValue('locale');
+      }
+
       const rtlLanguages = ['fa', 'ar', 'he', 'ur', 'ug', 'ps', 'yi'];
       if (userLocale && rtlLanguages.some((lang) => userLocale.toLowerCase().startsWith(lang))) {
         defaultDirection = 'rtl';
         defaultFontPreset = 'vazirmatn';
       }
-    } catch (_err) {
+    } catch (err) {
+      console.warn('[Theme Studio] Could not detect user locale. Defaulting to LTR / Inter:', err);
       defaultDirection = 'ltr';
       defaultFontPreset = 'inter';
     }
@@ -199,64 +208,113 @@ joplin.plugins.register({
       },
     });
 
-    async function getCurrentOptions(): Promise<StyleOptions> {
+    const settingKeys = [
+      'theme',
+      'direction',
+      'enableEditorTheme',
+      'themeApplicationShell',
+      'fontPreset',
+      'fontFamily',
+      'codeFontPreset',
+      'codeFont',
+      'fontSize',
+      'lineHeight',
+      'headingSizePreset',
+      'customHeadingSizes',
+      'contentMaxWidth',
+      'pdfExportStyle',
+    ];
+
+    async function getAllCurrentValues(): Promise<{ options: StyleOptions; editorEnabled: boolean; shellEnabled: boolean }> {
+      let vals: Record<string, any> = {};
+
+      if (typeof joplin.settings.values === 'function') {
+        vals = await joplin.settings.values(settingKeys);
+      } else {
+        const results = await Promise.all(settingKeys.map((k) => joplin.settings.value(k)));
+        settingKeys.forEach((k, idx) => {
+          vals[k] = results[idx];
+        });
+      }
+
+      const options: StyleOptions = {
+        themeKey: vals['theme'] || 'atom-one-dark',
+        direction: vals['direction'] || defaultDirection,
+        fontPreset: vals['fontPreset'] || defaultFontPreset,
+        fontFamily: vals['fontFamily'] || "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        codeFontPreset: vals['codeFontPreset'] || 'fira-code',
+        codeFont: vals['codeFont'] || "'Cascadia Code', 'Fira Code', 'Consolas', monospace",
+        fontSize: vals['fontSize'] || '16px',
+        lineHeight: vals['lineHeight'] || '1.75',
+        contentMaxWidth: vals['contentMaxWidth'] || 'full',
+        pdfExportStyle: vals['pdfExportStyle'] || 'exact',
+        headingSizePreset: vals['headingSizePreset'] || 'balanced',
+        customHeadingSizes: vals['customHeadingSizes'] || '1.75em, 1.42em, 1.25em, 1.12em, 1.05em, 1.0em',
+      };
+
       return {
-        themeKey: await joplin.settings.value('theme'),
-        direction: await joplin.settings.value('direction'),
-        fontPreset: await joplin.settings.value('fontPreset'),
-        fontFamily: await joplin.settings.value('fontFamily'),
-        codeFontPreset: await joplin.settings.value('codeFontPreset'),
-        codeFont: await joplin.settings.value('codeFont'),
-        fontSize: await joplin.settings.value('fontSize'),
-        lineHeight: await joplin.settings.value('lineHeight'),
-        contentMaxWidth: await joplin.settings.value('contentMaxWidth'),
-        pdfExportStyle: await joplin.settings.value('pdfExportStyle'),
-        headingSizePreset: await joplin.settings.value('headingSizePreset'),
-        customHeadingSizes: await joplin.settings.value('customHeadingSizes'),
+        options,
+        editorEnabled: vals['enableEditorTheme'] ?? true,
+        shellEnabled: vals['themeApplicationShell'] ?? true,
       };
     }
 
-    // 1. Register CodeMirror Editor Content Script
+    async function syncDesktopChromeFile(options: StyleOptions, enabled: boolean): Promise<void> {
+      try {
+        if (joplin.window && typeof (joplin.window as any).loadChromeCssFile === 'function') {
+          const content = enabled ? buildChromeCss(options) : '';
+          if (content === lastWrittenChromeCss) {
+            return;
+          }
+          lastWrittenChromeCss = content;
+
+          const fs = joplin.require('fs-extra');
+          const dataDir: string = await joplin.plugins.dataDir();
+          const chromeCssPath = `${dataDir}/theme-studio-chrome.css`;
+          await fs.writeFile(chromeCssPath, content, 'utf8');
+          await (joplin.window as any).loadChromeCssFile(chromeCssPath);
+        }
+      } catch (err) {
+        console.warn('[Theme Studio] Could not synchronize desktop chrome stylesheet:', err);
+      }
+    }
+
+    // 1. Initial application shell styling on cold launch
+    const initialConfig = await getAllCurrentValues();
+    await syncDesktopChromeFile(initialConfig.options, initialConfig.shellEnabled);
+
+    // 2. Reactively handle user setting changes
+    await joplin.settings.onChange(async (event: { keys?: string[] }) => {
+      const hasRelevantChange = !event?.keys || event.keys.some((k) => settingKeys.includes(k));
+      if (!hasRelevantChange) return;
+
+      const currentConfig = await getAllCurrentValues();
+      await syncDesktopChromeFile(currentConfig.options, currentConfig.shellEnabled);
+    });
+
+    // 3. Register CodeMirror Editor Content Script
     await joplin.contentScripts.register(
       ContentScriptType.CodeMirrorPlugin,
       'themeStudioCodeMirror',
       './codeMirrorTheme.js'
     );
 
-    async function syncDesktopChromeFile(options: StyleOptions, enabled: boolean): Promise<void> {
-      try {
-        if (joplin.window && typeof (joplin.window as any).loadChromeCssFile === 'function') {
-          const fs = joplin.require('fs-extra');
-          const dataDir: string = await joplin.plugins.dataDir();
-          const chromeCssPath = `${dataDir}/theme-studio-chrome.css`;
-          const content = enabled ? buildChromeCss(options) : '';
-          await fs.writeFile(chromeCssPath, content, 'utf8');
-          await (joplin.window as any).loadChromeCssFile(chromeCssPath);
-        }
-      } catch (_err) {
-        // Gracefully ignore on mobile platforms where loadChromeCssFile is unavailable
-      }
-    }
-
-    // 2. Respond to style requests (CodeMirror + TinyMCE Rich Text + Shell Chrome)
+    // 4. Respond to style requests (CodeMirror + TinyMCE Rich Text + Shell Chrome)
     await joplin.contentScripts.onMessage('themeStudioCodeMirror', async (message: any) => {
       if (message && (message.type === 'getAllStyles' || message.type === 'getEditorStyles')) {
-        const editorEnabled = await joplin.settings.value('enableEditorTheme');
-        const shellEnabled = await joplin.settings.value('themeApplicationShell');
-        const options = await getCurrentOptions();
-
-        await syncDesktopChromeFile(options, shellEnabled);
+        const config = await getAllCurrentValues();
+        await syncDesktopChromeFile(config.options, config.shellEnabled);
 
         return {
-          editorCss: editorEnabled ? buildEditorCss(options) : '',
-          viewerCss: buildThemeCss(options),
-          chromeCss: shellEnabled ? buildChromeCss(options) : '',
+          editorCss: config.editorEnabled ? buildEditorCss(config.options) : '',
+          viewerCss: buildThemeCss(config.options),
+          chromeCss: config.shellEnabled ? buildChromeCss(config.options) : '',
         };
       }
       return null;
     });
 
-    // 3. Register Markdown Viewer Content Script
+    // 5. Register Markdown Viewer Content Script
     await joplin.contentScripts.register(
       ContentScriptType.MarkdownItPlugin,
       'themeStudioMarkdownIt',
