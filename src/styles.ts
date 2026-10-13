@@ -13,6 +13,56 @@ export interface StyleOptions {
   pdfExportStyle: string;
   headingSizePreset?: string;
   customHeadingSizes?: string;
+  pdfPageSize?: string;
+  pdfPageMargin?: string;
+  customPdfMargin?: string;
+}
+
+function resolvePdfSettings(options: StyleOptions) {
+  let pageSize = 'a4';
+  switch (options.pdfPageSize) {
+    case 'letter':
+      pageSize = 'letter';
+      break;
+    case 'a5':
+      pageSize = 'a5';
+      break;
+    case 'a3':
+      pageSize = 'a3';
+      break;
+    case 'legal':
+      pageSize = 'legal';
+      break;
+    case 'auto':
+      pageSize = 'auto';
+      break;
+    case 'a4':
+    default:
+      pageSize = 'a4';
+      break;
+  }
+
+  let margin = '15mm 18mm';
+  switch (options.pdfPageMargin) {
+    case 'comfortable':
+      margin = '20mm 20mm';
+      break;
+    case 'compact':
+      margin = '8mm 10mm';
+      break;
+    case 'none':
+      margin = '0';
+      break;
+    case 'custom':
+      margin = options.customPdfMargin?.trim() || '15mm 18mm';
+      break;
+    case 'standard':
+    default:
+      margin = '15mm 18mm';
+      break;
+  }
+
+  return { pageSize, margin };
 }
 
 function resolveHeadingSizes(options: StyleOptions) {
@@ -1066,6 +1116,14 @@ body#tinymce th, #rendered-md th, body#tinymce td, #rendered-md td { text-align:
   const isPaperMode = options.pdfExportStyle === 'paper';
   const printBodyBg = isPaperMode ? '#ffffff' : 'var(--od-bg)';
   const printBodyFg = isPaperMode ? '#1e2227' : 'var(--od-fg)';
+  const { pageSize, margin } = resolvePdfSettings(options);
+
+  // In Exact Match mode, @page margin must be 0 so the theme background fills
+  // 100% of the physical paper canvas edge-to-edge (no unprinted white borders).
+  // Content spacing is applied as padding on body / #rendered-md instead.
+  // In Paper Friendly mode, standard @page margins apply to the white page.
+  const pageRuleMargin = isPaperMode ? margin : '0';
+  const contentPadding = isPaperMode ? '0' : margin;
 
   const coreStyles = `
 *, *::before, *::after { box-sizing: border-box !important; }
@@ -1393,22 +1451,28 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
    FLAWLESS PDF & PRINT EXPORT ENGINE
    ================================================================= */
 @page {
-  margin: 12mm 15mm 12mm 15mm;
-  size: auto;
+  size: ${pageSize};
+  margin: ${pageRuleMargin};
 }
 
 @media print {
-  *, *::before, *::after, html, body, #rendered-md {
+  *, *::before, *::after, :root, html, body, .exported-note, #rendered-md {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  :root, html, body, .exported-note {
+    background-color: ${printBodyBg} !important;
+    color: ${printBodyFg} !important;
   }
 
   body, #rendered-md {
     background-color: ${printBodyBg} !important;
     color: ${printBodyFg} !important;
     max-width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    margin: 0 auto !important;
+    padding: ${contentPadding} !important;
+    box-sizing: border-box !important;
     font-size: 14px !important;
     line-height: ${options.lineHeight} !important;
   }
