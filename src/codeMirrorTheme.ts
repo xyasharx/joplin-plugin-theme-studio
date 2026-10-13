@@ -57,6 +57,10 @@ module.exports = {
 
       if (!isReady) return false;
 
+      if (doc.body && !doc.body.getAttribute('dir')) {
+        doc.body.setAttribute('dir', 'auto');
+      }
+
       let styleEl = doc.getElementById('theme-studio-tinymce-styles') as HTMLStyleElement | null;
       if (!styleEl) {
         styleEl = doc.createElement('style');
