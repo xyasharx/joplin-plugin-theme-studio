@@ -8,6 +8,33 @@
   "author": "Yashar",
   "homepage_url": "https://github.com/xyasharx/joplin-plugin-theme-studio",
   "platforms": ["desktop", "mobile"],
+  "categories": ["themes", "appearance", "editor", "viewer"],
+  "screenshots": [
+    {
+      "src": "screenshots/01-hero-tokyo-night.png",
+      "label": "Theme Studio in Tokyo Night with split editor and viewer"
+    },
+    {
+      "src": "screenshots/02-persian-arabic-rtl.png",
+      "label": "BiDi and native RTL typography in Vazirmatn"
+    },
+    {
+      "src": "screenshots/03-arabic-everforest-light.png",
+      "label": "Everforest Light warm reading palette"
+    },
+    {
+      "src": "screenshots/04-chinese-dracula.png",
+      "label": "Dracula Chinese Noto Sans SC"
+    }
+    {
+      "src": "screenshots/05-Hindi-catppuccin-latte.png",
+      "label": "Catppuccin Latte Hindi Noto Sans Devanagari"
+    }
+    {
+      "src": "screenshots/06-hebrew-one-dark.png",
+      "label": "Atom One Dark Hebrew Heebo"
+    }
+  ],
   "keywords": [
     "theme",
     "themes",
