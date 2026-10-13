@@ -59,29 +59,71 @@ function getMemoizedViewerCss(pluginOptions: any): string {
   return cachedViewerCss;
 }
 
+const RTL_REGEX = /[\u0591-\u07FF\uFB1D-\uFDFD\uFE70-\uFEFC]/;
+
+function isRtlContent(str: string): boolean {
+  if (!str) return false;
+  const stripped = str.replace(/[\s0-9\p{P}\p{S}]/gu, '');
+  if (!stripped) return false;
+  return RTL_REGEX.test(stripped[0]);
+}
+
 module.exports = {
   default: function (_context: any) {
     return {
       plugin: function (markdownIt: any, pluginOptions: any) {
-        // Automatically inject dir="auto" on structural blocks in Auto BiDi mode
+        // Explicitly stamp dir="rtl" or dir="ltr" based on first strong character
         markdownIt.core.ruler.push('theme_studio_bidi_tagger', (state: any) => {
           const direction = readSetting(pluginOptions, 'direction', 'ltr');
           if (direction !== 'auto') return;
 
-          const blockTokenTypes = [
-            'paragraph_open',
-            'heading_open',
-            'bullet_list_open',
-            'ordered_list_open',
-            'list_item_open',
-            'blockquote_open',
-            'table_open',
-          ];
+          const tokens = state.tokens;
+          const len = tokens.length;
 
-          for (let i = 0; i < state.tokens.length; i++) {
-            const token = state.tokens[i];
-            if (blockTokenTypes.includes(token.type)) {
-              token.attrSet('dir', 'auto');
+          for (let i = 0; i < len; i++) {
+            const token = tokens[i];
+
+            // 1. Paragraphs & Headings
+            if (token.type === 'paragraph_open' || token.type === 'heading_open') {
+              const inlineToken = tokens[i + 1];
+              if (inlineToken && inlineToken.type === 'inline' && inlineToken.content) {
+                token.attrSet('dir', isRtlContent(inlineToken.content) ? 'rtl' : 'ltr');
+              }
+            }
+
+            // 2. Lists: evaluate the first item to give the <ul> / <ol> container the matching direction
+            if (token.type === 'bullet_list_open' || token.type === 'ordered_list_open') {
+              let listDir = 'ltr';
+              for (let j = i + 1; j < len; j++) {
+                if (tokens[j].type === 'bullet_list_close' || tokens[j].type === 'ordered_list_close') break;
+                if (tokens[j].type === 'inline' && tokens[j].content) {
+                  listDir = isRtlContent(tokens[j].content) ? 'rtl' : 'ltr';
+                  break;
+                }
+              }
+              token.attrSet('dir', listDir);
+            }
+
+            // 3. Individual List Items
+            if (token.type === 'list_item_open') {
+              for (let j = i + 1; j < len; j++) {
+                if (tokens[j].type === 'list_item_close') break;
+                if (tokens[j].type === 'inline' && tokens[j].content) {
+                  token.attrSet('dir', isRtlContent(tokens[j].content) ? 'rtl' : 'ltr');
+                  break;
+                }
+              }
+            }
+
+            // 4. Blockquotes
+            if (token.type === 'blockquote_open') {
+              for (let j = i + 1; j < len; j++) {
+                if (tokens[j].type === 'blockquote_close') break;
+                if (tokens[j].type === 'inline' && tokens[j].content) {
+                  token.attrSet('dir', isRtlContent(tokens[j].content) ? 'rtl' : 'ltr');
+                  break;
+                }
+              }
             }
           }
         });
