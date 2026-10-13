@@ -221,8 +221,14 @@ ${dirCss}
 }
 
 /* Cursor & Selection (Fully unmasked for CodeMirror 6 and CodeMirror 5) */
-.CodeMirror-cursor {
+.CodeMirror-cursor,
+.cm-cursor,
+.cm-dropCursor {
   border-left: 2px solid var(--od-link) !important;
+  border-left-color: var(--od-link) !important;
+}
+.cm-lineNumbers .cm-gutterElement {
+  color: var(--od-comment) !important;
 }
 .cm-selectionBackground,
 .cm-editor .cm-selectionLayer .cm-selectionBackground,
@@ -1218,10 +1224,6 @@ body#tinymce :is(p, li) code, #rendered-md :is(p, li) code {
 body#tinymce table, #rendered-md table,
 body#tinymce th, #rendered-md th,
 body#tinymce td, #rendered-md td {
-  font-family: ${resolvedFont} !important;
-}
-body#tinymce table :is(th, td) *:not(code):not(pre),
-#rendered-md table :is(th, td) *:not(code):not(pre) {
   font-family: ${resolvedFont} !important;
 }
 body#tinymce table :is(th, td) code,
