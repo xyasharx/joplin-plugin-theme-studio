@@ -26,11 +26,14 @@ function getMemoizedViewerCss(pluginOptions: any): string {
   const lineHeight = readSetting(pluginOptions, 'lineHeight', '1.75');
   const contentMaxWidth = readSetting(pluginOptions, 'contentMaxWidth', 'full');
   const pdfExportStyle = readSetting(pluginOptions, 'pdfExportStyle', 'exact');
+  const pdfPageSize = readSetting(pluginOptions, 'pdfPageSize', 'a4');
+  const pdfPageMargin = readSetting(pluginOptions, 'pdfPageMargin', 'standard');
+  const customPdfMargin = readSetting(pluginOptions, 'customPdfMargin', '15mm 18mm');
   const headingSizePreset = readSetting(pluginOptions, 'headingSizePreset', 'balanced');
   const customHeadingSizes = readSetting(pluginOptions, 'customHeadingSizes', '1.75em, 1.42em, 1.25em, 1.12em, 1.05em, 1.0em');
 
   // Fast cache key comparison
-  const cacheKey = `${themeKey}|${direction}|${fontPreset}|${fontSize}|${lineHeight}|${fontFamily}|${codeFontPreset}|${codeFont}|${contentMaxWidth}|${pdfExportStyle}|${headingSizePreset}|${customHeadingSizes}`;
+  const cacheKey = `${themeKey}|${direction}|${fontPreset}|${fontSize}|${lineHeight}|${fontFamily}|${codeFontPreset}|${codeFont}|${contentMaxWidth}|${pdfExportStyle}|${pdfPageSize}|${pdfPageMargin}|${customPdfMargin}|${headingSizePreset}|${customHeadingSizes}`;
 
   if (cacheKey !== lastViewerCacheKey || !cachedViewerCss) {
     lastViewerCacheKey = cacheKey;
@@ -45,6 +48,9 @@ function getMemoizedViewerCss(pluginOptions: any): string {
       lineHeight,
       contentMaxWidth,
       pdfExportStyle,
+      pdfPageSize,
+      pdfPageMargin,
+      customPdfMargin,
       headingSizePreset,
       customHeadingSizes,
     });
