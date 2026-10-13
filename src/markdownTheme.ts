@@ -3,19 +3,31 @@ import { buildThemeCss, StyleOptions } from './styles';
 let cachedViewerCss = '';
 let lastViewerCacheKey = '';
 
+function readSetting(pluginOptions: any, key: string, fallback: string): string {
+  try {
+    if (pluginOptions && typeof pluginOptions.settingValue === 'function') {
+      const val = pluginOptions.settingValue(key);
+      return val !== undefined && val !== null ? String(val) : fallback;
+    }
+  } catch (err) {
+    console.debug(`[Theme Studio] Could not read setting "${key}":`, err);
+  }
+  return fallback;
+}
+
 function getMemoizedViewerCss(pluginOptions: any): string {
-  const themeKey = pluginOptions.settingValue('theme') || 'atom-one-dark';
-  const direction = pluginOptions.settingValue('direction') || 'ltr';
-  const fontPreset = pluginOptions.settingValue('fontPreset') || 'inter';
-  const fontFamily = pluginOptions.settingValue('fontFamily') || '';
-  const codeFontPreset = pluginOptions.settingValue('codeFontPreset') || 'fira-code';
-  const codeFont = pluginOptions.settingValue('codeFont') || '';
-  const fontSize = pluginOptions.settingValue('fontSize') || '16px';
-  const lineHeight = pluginOptions.settingValue('lineHeight') || '1.75';
-  const contentMaxWidth = pluginOptions.settingValue('contentMaxWidth') || 'full';
-  const pdfExportStyle = pluginOptions.settingValue('pdfExportStyle') || 'exact';
-  const headingSizePreset = pluginOptions.settingValue('headingSizePreset') || 'balanced';
-  const customHeadingSizes = pluginOptions.settingValue('customHeadingSizes') || '1.75em, 1.42em, 1.25em, 1.12em, 1.05em, 1.0em';
+  const themeKey = readSetting(pluginOptions, 'theme', 'atom-one-dark');
+  const direction = readSetting(pluginOptions, 'direction', 'ltr');
+  const fontPreset = readSetting(pluginOptions, 'fontPreset', 'inter');
+  const fontFamily = readSetting(pluginOptions, 'fontFamily', '');
+  const codeFontPreset = readSetting(pluginOptions, 'codeFontPreset', 'fira-code');
+  const codeFont = readSetting(pluginOptions, 'codeFont', '');
+  const fontSize = readSetting(pluginOptions, 'fontSize', '16px');
+  const lineHeight = readSetting(pluginOptions, 'lineHeight', '1.75');
+  const contentMaxWidth = readSetting(pluginOptions, 'contentMaxWidth', 'full');
+  const pdfExportStyle = readSetting(pluginOptions, 'pdfExportStyle', 'exact');
+  const headingSizePreset = readSetting(pluginOptions, 'headingSizePreset', 'balanced');
+  const customHeadingSizes = readSetting(pluginOptions, 'customHeadingSizes', '1.75em, 1.42em, 1.25em, 1.12em, 1.05em, 1.0em');
 
   // Fast cache key comparison
   const cacheKey = `${themeKey}|${direction}|${fontPreset}|${fontSize}|${lineHeight}|${fontFamily}|${codeFontPreset}|${codeFont}|${contentMaxWidth}|${pdfExportStyle}|${headingSizePreset}|${customHeadingSizes}`;
