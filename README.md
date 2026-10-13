@@ -34,6 +34,24 @@ Theme Studio is a modular palette and typography engine for Joplin. It applies u
 
 ---
 
+## 📸 Screenshots
+
+<p align="center">
+  <img src="screenshots/01-hero-tokyo-night.png" alt="Tokyo Night Palette" width="100%">
+</p>
+
+### RTL Typography & Auto-BiDi
+<p align="center">
+  <img src="screenshots/02-persian-arabic-rtl.png" alt="Persian & Arabic RTL Typography" width="100%">
+</p>
+
+### Light Palettes (Everforest Light)
+<p align="center">
+  <img src="screenshots/03-everforest-light.png" alt="Everforest Light Mode" width="100%">
+</p>
+
+---
+
 ## 🌍 International Font Presets
 
 | Script / Target | Font Preset | Technical Description |
