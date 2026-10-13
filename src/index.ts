@@ -206,6 +206,47 @@ joplin.plugins.register({
           'paper': 'Paper Friendly (White Page Background with Themed Accents)',
         },
       },
+      'pdfPageSize': {
+        value: 'a4',
+        type: SettingItemType.String,
+        section: 'themeStudioSection',
+        isEnum: true,
+        public: true,
+        label: 'PDF Page Size',
+        description: 'Standard paper dimensions for PDF export.',
+        options: {
+          'a4': 'A4 (210 × 297 mm - Global Standard)',
+          'letter': 'US Letter (8.5 × 11 in - North America)',
+          'a5': 'A5 (148 × 210 mm - Compact)',
+          'a3': 'A3 (297 × 420 mm - Large Format)',
+          'legal': 'US Legal (8.5 × 14 in)',
+          'auto': 'Auto (Printer / OS Default)',
+        },
+      },
+      'pdfPageMargin': {
+        value: 'standard',
+        type: SettingItemType.String,
+        section: 'themeStudioSection',
+        isEnum: true,
+        public: true,
+        label: 'PDF Page Margins',
+        description: 'Page margin width when exporting to PDF.',
+        options: {
+          'standard': 'Standard Margins (15mm top/bottom, 18mm sides)',
+          'comfortable': 'Comfortable / Wide Margins (20mm all sides)',
+          'compact': 'Compact / Narrow Margins (8mm all sides)',
+          'none': 'Zero Margins / Full Bleed (0mm - Edge to Edge)',
+          'custom': 'Custom Margins (Configured below)',
+        },
+      },
+      'customPdfMargin': {
+        value: '15mm 18mm',
+        type: SettingItemType.String,
+        section: 'themeStudioSection',
+        public: true,
+        label: 'Custom PDF Page Margins',
+        description: 'Active only when "Custom Margins" is selected above (e.g., "15mm 18mm", "1in", "10mm 15mm 10mm 15mm").',
+      },
     });
 
     const settingKeys = [
@@ -223,6 +264,9 @@ joplin.plugins.register({
       'customHeadingSizes',
       'contentMaxWidth',
       'pdfExportStyle',
+      'pdfPageSize',
+      'pdfPageMargin',
+      'customPdfMargin',
     ];
 
     async function getAllCurrentValues(): Promise<{ options: StyleOptions; editorEnabled: boolean; shellEnabled: boolean }> {
@@ -250,6 +294,9 @@ joplin.plugins.register({
         pdfExportStyle: vals['pdfExportStyle'] || 'exact',
         headingSizePreset: vals['headingSizePreset'] || 'balanced',
         customHeadingSizes: vals['customHeadingSizes'] || '1.75em, 1.42em, 1.25em, 1.12em, 1.05em, 1.0em',
+        pdfPageSize: vals['pdfPageSize'] || 'a4',
+        pdfPageMargin: vals['pdfPageMargin'] || 'standard',
+        customPdfMargin: vals['customPdfMargin'] || '15mm 18mm',
       };
 
       return {
