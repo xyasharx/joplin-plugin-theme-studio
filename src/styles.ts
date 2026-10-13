@@ -1007,13 +1007,16 @@ body#tinymce :is(h3, h4, h5, h6), #rendered-md :is(h3, h4, h5, h6) { text-align:
 body#tinymce ul, body#tinymce ol, #rendered-md ul, #rendered-md ol {
   direction: rtl !important;
   text-align: right !important;
-  padding-right: 1.6em !important;
+  padding-right: 2.2em !important;
   padding-left: 0 !important;
 }
-#rendered-md li, body#tinymce li { direction: rtl !important; text-align: right !important; }
+#rendered-md li, body#tinymce li {
+  direction: rtl !important;
+  text-align: right !important;
+}
 #rendered-md ul ul, #rendered-md ol ol, #rendered-md ul ol, #rendered-md ol ul,
 body#tinymce ul ul, body#tinymce ol ol, body#tinymce ul ol, body#tinymce ol ul {
-  padding-right: 1.4em !important;
+  padding-right: 1.6em !important;
   padding-left: 0 !important;
 }
 .md-checkbox input[type="checkbox"] { margin-left: 8px !important; margin-right: 0 !important; }
@@ -1076,62 +1079,78 @@ body#tinymce, body, #rendered-md { direction: ltr !important; text-align: start 
 /* =================================================================
    NATIVE BIDI LIST & MARKER ENGINE (RTL / LTR AWARE)
    ================================================================= */
+/* Default list indentation in auto mode */
+body#tinymce ul, body#tinymce ol,
+#rendered-md ul, #rendered-md ol {
+  padding-left: 2em !important;
+  padding-right: 0 !important;
+}
+
+/* Explicit RTL lists and items (attributes and pseudo-classes supported) */
+#rendered-md ul[dir="rtl"], #rendered-md ol[dir="rtl"],
+body#tinymce ul[dir="rtl"], body#tinymce ol[dir="rtl"],
 #rendered-md ul:dir(rtl), #rendered-md ol:dir(rtl),
 body#tinymce ul:dir(rtl), body#tinymce ol:dir(rtl) {
   direction: rtl !important;
   text-align: right !important;
-  padding-right: 1.8em !important;
+  padding-right: 2.2em !important;
   padding-left: 0 !important;
 }
 
-#rendered-md ul:dir(ltr), #rendered-md ol:dir(ltr),
-body#tinymce ul:dir(ltr), body#tinymce ol:dir(ltr) {
-  direction: ltr !important;
-  text-align: left !important;
-  padding-left: 1.8em !important;
-  padding-right: 0 !important;
-}
-
+#rendered-md li[dir="rtl"], body#tinymce li[dir="rtl"],
 #rendered-md li:dir(rtl), body#tinymce li:dir(rtl) {
   direction: rtl !important;
   text-align: right !important;
 }
 
+#rendered-md ul[dir="rtl"] :is(ul, ol), #rendered-md ol[dir="rtl"] :is(ul, ol),
+body#tinymce ul[dir="rtl"] :is(ul, ol), body#tinymce ol[dir="rtl"] :is(ul, ol) {
+  padding-right: 1.6em !important;
+  padding-left: 0 !important;
+}
+
+/* Explicit LTR lists and items */
+#rendered-md ul[dir="ltr"], #rendered-md ol[dir="ltr"],
+body#tinymce ul[dir="ltr"], body#tinymce ol[dir="ltr"],
+#rendered-md ul:dir(ltr), #rendered-md ol:dir(ltr),
+body#tinymce ul:dir(ltr), body#tinymce ol:dir(ltr) {
+  direction: ltr !important;
+  text-align: left !important;
+  padding-left: 2em !important;
+  padding-right: 0 !important;
+}
+
+#rendered-md li[dir="ltr"], body#tinymce li[dir="ltr"],
 #rendered-md li:dir(ltr), body#tinymce li:dir(ltr) {
   direction: ltr !important;
   text-align: left !important;
 }
 
-#rendered-md ul:dir(rtl) :is(ul, ol), #rendered-md ol:dir(rtl) :is(ul, ol),
-body#tinymce ul:dir(rtl) :is(ul, ol), body#tinymce ol:dir(rtl) :is(ul, ol) {
-  padding-right: 1.4em !important;
-  padding-left: 0 !important;
-}
-
-#rendered-md ul:dir(ltr) :is(ul, ol), #rendered-md ol:dir(ltr) :is(ul, ol),
-body#tinymce ul:dir(ltr) :is(ul, ol), body#tinymce ol:dir(ltr) :is(ul, ol) {
-  padding-left: 1.4em !important;
+#rendered-md ul[dir="ltr"] :is(ul, ol), #rendered-md ol[dir="ltr"] :is(ul, ol),
+body#tinymce ul[dir="ltr"] :is(ul, ol), body#tinymce ol[dir="ltr"] :is(ul, ol) {
+  padding-left: 1.6em !important;
   padding-right: 0 !important;
 }
 
 /* BiDi Checkboxes */
-#rendered-md li:dir(rtl) .md-checkbox input[type="checkbox"],
+#rendered-md li[dir="rtl"] input[type="checkbox"],
 #rendered-md li:dir(rtl) input[type="checkbox"],
-body#tinymce li:dir(rtl) .md-checkbox input[type="checkbox"],
+body#tinymce li[dir="rtl"] input[type="checkbox"],
 body#tinymce li:dir(rtl) input[type="checkbox"] {
   margin-left: 8px !important;
   margin-right: 0 !important;
 }
 
-#rendered-md li:dir(ltr) .md-checkbox input[type="checkbox"],
+#rendered-md li[dir="ltr"] input[type="checkbox"],
 #rendered-md li:dir(ltr) input[type="checkbox"],
-body#tinymce li:dir(ltr) .md-checkbox input[type="checkbox"],
+body#tinymce li[dir="ltr"] input[type="checkbox"],
 body#tinymce li:dir(ltr) input[type="checkbox"] {
   margin-right: 8px !important;
   margin-left: 0 !important;
 }
 
 /* BiDi H2 Headings */
+#rendered-md h2[dir="rtl"], body#tinymce h2[dir="rtl"],
 #rendered-md h2:dir(rtl), body#tinymce h2:dir(rtl) {
   border-right: 5px solid var(--od-h2) !important;
   border-left: none !important;
@@ -1140,6 +1159,7 @@ body#tinymce li:dir(ltr) input[type="checkbox"] {
   text-align: right !important;
 }
 
+#rendered-md h2[dir="ltr"], body#tinymce h2[dir="ltr"],
 #rendered-md h2:dir(ltr), body#tinymce h2:dir(ltr) {
   border-left: 5px solid var(--od-h2) !important;
   border-right: none !important;
@@ -1149,6 +1169,7 @@ body#tinymce li:dir(ltr) input[type="checkbox"] {
 }
 
 /* BiDi Blockquotes */
+#rendered-md blockquote[dir="rtl"], body#tinymce blockquote[dir="rtl"],
 #rendered-md blockquote:dir(rtl), body#tinymce blockquote:dir(rtl) {
   border-right: 1px solid var(--od-comment) !important;
   border-left: none !important;
@@ -1158,6 +1179,7 @@ body#tinymce li:dir(ltr) input[type="checkbox"] {
   direction: rtl !important;
 }
 
+#rendered-md blockquote[dir="ltr"], body#tinymce blockquote[dir="ltr"],
 #rendered-md blockquote:dir(ltr), body#tinymce blockquote:dir(ltr) {
   border-left: 1px solid var(--od-comment) !important;
   border-right: none !important;
