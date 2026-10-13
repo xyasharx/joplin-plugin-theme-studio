@@ -1072,15 +1072,101 @@ body#tinymce, body, #rendered-md { direction: ltr !important; text-align: start 
   unicode-bidi: plaintext !important;
   text-align: start !important;
 }
-body#tinymce h2, #rendered-md h2 { border-inline-start: 5px solid var(--od-h2) !important; padding-inline-start: 12px !important; }
-body#tinymce ul, body#tinymce ol, #rendered-md ul, #rendered-md ol { padding-inline-start: 2em !important; }
 
-/* Auto-BiDi Blockquotes: 1px Border on Dynamic Inline Start */
-body#tinymce blockquote, #rendered-md blockquote {
-  border-inline-start: 1px solid var(--od-comment) !important;
-  border-inline-end: 0 !important;
-  padding-inline-start: 16px !important;
+/* =================================================================
+   NATIVE BIDI LIST & MARKER ENGINE (RTL / LTR AWARE)
+   ================================================================= */
+#rendered-md ul:dir(rtl), #rendered-md ol:dir(rtl),
+body#tinymce ul:dir(rtl), body#tinymce ol:dir(rtl) {
+  direction: rtl !important;
+  text-align: right !important;
+  padding-right: 1.8em !important;
+  padding-left: 0 !important;
 }
+
+#rendered-md ul:dir(ltr), #rendered-md ol:dir(ltr),
+body#tinymce ul:dir(ltr), body#tinymce ol:dir(ltr) {
+  direction: ltr !important;
+  text-align: left !important;
+  padding-left: 1.8em !important;
+  padding-right: 0 !important;
+}
+
+#rendered-md li:dir(rtl), body#tinymce li:dir(rtl) {
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+#rendered-md li:dir(ltr), body#tinymce li:dir(ltr) {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+#rendered-md ul:dir(rtl) :is(ul, ol), #rendered-md ol:dir(rtl) :is(ul, ol),
+body#tinymce ul:dir(rtl) :is(ul, ol), body#tinymce ol:dir(rtl) :is(ul, ol) {
+  padding-right: 1.4em !important;
+  padding-left: 0 !important;
+}
+
+#rendered-md ul:dir(ltr) :is(ul, ol), #rendered-md ol:dir(ltr) :is(ul, ol),
+body#tinymce ul:dir(ltr) :is(ul, ol), body#tinymce ol:dir(ltr) :is(ul, ol) {
+  padding-left: 1.4em !important;
+  padding-right: 0 !important;
+}
+
+/* BiDi Checkboxes */
+#rendered-md li:dir(rtl) .md-checkbox input[type="checkbox"],
+#rendered-md li:dir(rtl) input[type="checkbox"],
+body#tinymce li:dir(rtl) .md-checkbox input[type="checkbox"],
+body#tinymce li:dir(rtl) input[type="checkbox"] {
+  margin-left: 8px !important;
+  margin-right: 0 !important;
+}
+
+#rendered-md li:dir(ltr) .md-checkbox input[type="checkbox"],
+#rendered-md li:dir(ltr) input[type="checkbox"],
+body#tinymce li:dir(ltr) .md-checkbox input[type="checkbox"],
+body#tinymce li:dir(ltr) input[type="checkbox"] {
+  margin-right: 8px !important;
+  margin-left: 0 !important;
+}
+
+/* BiDi H2 Headings */
+#rendered-md h2:dir(rtl), body#tinymce h2:dir(rtl) {
+  border-right: 5px solid var(--od-h2) !important;
+  border-left: none !important;
+  padding-right: 12px !important;
+  padding-left: 0 !important;
+  text-align: right !important;
+}
+
+#rendered-md h2:dir(ltr), body#tinymce h2:dir(ltr) {
+  border-left: 5px solid var(--od-h2) !important;
+  border-right: none !important;
+  padding-left: 12px !important;
+  padding-right: 0 !important;
+  text-align: left !important;
+}
+
+/* BiDi Blockquotes */
+#rendered-md blockquote:dir(rtl), body#tinymce blockquote:dir(rtl) {
+  border-right: 1px solid var(--od-comment) !important;
+  border-left: none !important;
+  padding-right: 16px !important;
+  padding-left: 10px !important;
+  text-align: right !important;
+  direction: rtl !important;
+}
+
+#rendered-md blockquote:dir(ltr), body#tinymce blockquote:dir(ltr) {
+  border-left: 1px solid var(--od-comment) !important;
+  border-right: none !important;
+  padding-left: 16px !important;
+  padding-right: 10px !important;
+  text-align: left !important;
+  direction: ltr !important;
+}
+
 body#tinymce th, #rendered-md th, body#tinymce td, #rendered-md td { text-align: start !important; }
 .mermaid .nodeLabel, .mermaid .edgeLabel, .mermaid .label, .mermaid text { unicode-bidi: plaintext !important; }
 `;
