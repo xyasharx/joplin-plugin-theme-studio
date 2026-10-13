@@ -47,7 +47,7 @@ Theme Studio is a modular palette and typography engine for Joplin. It applies u
 
 ### Light Palettes (Everforest Light)
 <p align="center">
-  <img src="screenshots/03-everforest-light.png" alt="Everforest Light Mode" width="100%">
+  <img src="screenshots/03-arabic-everforest-light.png" alt="Everforest Light Mode" width="100%">
 </p>
 
 ---
