@@ -7,8 +7,17 @@
   "description": "All-in-one multi-palette engine (Tokyo Night, Everforest, Catppuccin, Nord, Dracula, Gruvbox, Atom One) with native RTL/LTR typography & mobile support.",
   "author": "Yashar",
   "homepage_url": "https://github.com/xyasharx/joplin-plugin-theme-studio",
-  "platforms": ["desktop", "mobile"],
-  "categories": ["themes", "appearance", "editor", "viewer"],
+  "repository_url": "https://github.com/xyasharx/joplin-plugin-theme-studio",
+  "platforms": [
+    "desktop",
+    "mobile"
+  ],
+  "categories": [
+    "themes",
+    "appearance",
+    "editor",
+    "viewer"
+  ],
   "screenshots": [
     {
       "src": "screenshots/01-hero-tokyo-night.png",
