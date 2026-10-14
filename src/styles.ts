@@ -1,4 +1,4 @@
-import { themes } from './themes';
+import { themes, ThemePalette } from './themes';
 
 export interface StyleOptions {
   themeKey: string;
@@ -18,86 +18,84 @@ export interface StyleOptions {
   customPdfMargin?: string;
 }
 
-function resolvePdfSettings(options: StyleOptions) {
-  let pageSize = 'a4';
-  switch (options.pdfPageSize) {
-    case 'letter':
-      pageSize = 'letter';
-      break;
-    case 'a5':
-      pageSize = 'a5';
-      break;
-    case 'a3':
-      pageSize = 'a3';
-      break;
-    case 'legal':
-      pageSize = 'legal';
-      break;
-    case 'auto':
-      pageSize = 'auto';
-      break;
-    case 'a4':
-    default:
-      pageSize = 'a4';
-      break;
-  }
+/**
+ * Where the document stylesheet will live.
+ *  - 'viewer'  : Markdown viewer / PDF export (scoped to `#rendered-md`).
+ *  - 'tinymce' : Rich Text editor iframe (scoped to `body#tinymce`).
+ * Each target only receives the selectors it can actually match, which
+ * roughly halves the CSS the browser has to parse on every render.
+ */
+export type CssTarget = 'viewer' | 'tinymce';
 
-  let margin = '15mm 18mm';
-  switch (options.pdfPageMargin) {
-    case 'comfortable':
-      margin = '20mm 20mm';
-      break;
-    case 'compact':
-      margin = '8mm 10mm';
-      break;
-    case 'none':
-      margin = '0';
-      break;
-    case 'custom':
-      margin = options.customPdfMargin?.trim() || '15mm 18mm';
-      break;
-    case 'standard':
-    default:
-      margin = '15mm 18mm';
-      break;
+const DEFAULT_FONT_STACK = `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+const DEFAULT_CODE_FONT_STACK = `'Cascadia Code', 'Fira Code', 'Consolas', monospace`;
+
+const PDF_PAGE_SIZES = new Set(['a4', 'letter', 'a5', 'a3', 'legal', 'auto']);
+const PDF_PAGE_MARGINS: Record<string, string> = {
+  standard: '15mm 18mm',
+  comfortable: '20mm 20mm',
+  compact: '8mm 10mm',
+  none: '0',
+};
+
+const HEADING_PRESETS: Record<string, Record<string, string>> = {
+  balanced: { h1: '1.75em', h2: '1.42em', h3: '1.25em', h4: '1.12em', h5: '1.05em', h6: '1.0em' },
+  large: { h1: '2.15em', h2: '1.7em', h3: '1.4em', h4: '1.22em', h5: '1.1em', h6: '1.0em' },
+  compact: { h1: '1.5em', h2: '1.3em', h3: '1.18em', h4: '1.08em', h5: '1.02em', h6: '0.95em' },
+};
+
+/**
+ * Conservative whitespace/comment compaction. The document stylesheet is
+ * generated once per configuration but re-parsed by the browser on every
+ * render, so bytes matter. Deliberately never touches `:` (attribute
+ * selectors such as `[style*="font-weight: bold"]`, `@media (max-width: …)`
+ * and URLs) and never removes single spaces inside values.
+ */
+function compactCss(css: string): string {
+  return css
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/\s*([{};,>])\s*/g, '$1')
+    .replace(/;}/g, '}')
+    .trim();
+}
+
+function resolveTheme(options: StyleOptions): ThemePalette {
+  return themes[options.themeKey] || themes['atom-one-dark'];
+}
+
+function buildCssVariables(theme: ThemePalette, extra = ''): string {
+  let css = ':root {\n';
+  for (const [key, value] of Object.entries(theme.variables)) {
+    css += `  ${key}: ${value};\n`;
+  }
+  css += extra;
+  css += '}\n';
+  return css;
+}
+
+function resolvePdfSettings(options: StyleOptions) {
+  const pageSize = options.pdfPageSize && PDF_PAGE_SIZES.has(options.pdfPageSize) ? options.pdfPageSize : 'a4';
+
+  let margin: string;
+  if (options.pdfPageMargin === 'custom') {
+    margin = options.customPdfMargin?.trim() || PDF_PAGE_MARGINS.standard;
+  } else {
+    margin = PDF_PAGE_MARGINS[options.pdfPageMargin || 'standard'] || PDF_PAGE_MARGINS.standard;
   }
 
   return { pageSize, margin };
 }
 
 function resolveHeadingSizes(options: StyleOptions) {
-  const defaultSizes = {
-    h1: '1.75em',
-    h2: '1.42em',
-    h3: '1.25em',
-    h4: '1.12em',
-    h5: '1.05em',
-    h6: '1.0em',
-  };
+  const defaultSizes = HEADING_PRESETS.balanced;
+  const preset = options.headingSizePreset || 'balanced';
 
-  if (options.headingSizePreset === 'large') {
-    return {
-      h1: '2.15em',
-      h2: '1.7em',
-      h3: '1.4em',
-      h4: '1.22em',
-      h5: '1.1em',
-      h6: '1.0em',
-    };
+  if (preset === 'large' || preset === 'compact') {
+    return HEADING_PRESETS[preset];
   }
 
-  if (options.headingSizePreset === 'compact') {
-    return {
-      h1: '1.5em',
-      h2: '1.3em',
-      h3: '1.18em',
-      h4: '1.08em',
-      h5: '1.02em',
-      h6: '0.95em',
-    };
-  }
-
-  if (options.headingSizePreset === 'custom' && options.customHeadingSizes) {
+  if (preset === 'custom' && options.customHeadingSizes) {
     const parts = options.customHeadingSizes
       .split(',')
       .map((s) => s.replace(/h[1-6]:?/gi, '').trim())
@@ -162,7 +160,7 @@ function resolveFonts(options: StyleOptions) {
       break;
     case 'custom':
     default:
-      resolvedFont = options.fontFamily || `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+      resolvedFont = options.fontFamily || DEFAULT_FONT_STACK;
       break;
   }
 
@@ -181,7 +179,7 @@ function resolveFonts(options: StyleOptions) {
       break;
     case 'custom':
     default:
-      resolvedCodeFont = options.codeFont || `'Cascadia Code', 'Fira Code', 'Consolas', monospace`;
+      resolvedCodeFont = options.codeFont || DEFAULT_CODE_FONT_STACK;
       break;
   }
 
@@ -192,14 +190,9 @@ function resolveFonts(options: StyleOptions) {
 // 1. MARKDOWN EDITOR (CodeMirror 6, CodeMirror 5 & TinyMCE) ENGINE
 // =================================================================
 export function buildEditorCss(options: StyleOptions): string {
-  const selectedTheme = themes[options.themeKey] || themes['atom-one-dark'];
+  const selectedTheme = resolveTheme(options);
   const { fontImport, resolvedFont, resolvedCodeFont } = resolveFonts(options);
-
-  let cssVariables = ':root {\n';
-  for (const [key, value] of Object.entries(selectedTheme.variables)) {
-    cssVariables += `  ${key}: ${value};\n`;
-  }
-  cssVariables += '}\n';
+  const cssVariables = buildCssVariables(selectedTheme);
 
   let dirCss = '';
   if (options.direction === 'rtl') {
@@ -339,14 +332,9 @@ ${dirCss}
 // 2. APPLICATION SHELL (DESKTOP UI) THEMING ENGINE
 // =================================================================
 export function buildChromeCss(options: StyleOptions): string {
-  const selectedTheme = themes[options.themeKey] || themes['atom-one-dark'];
+  const selectedTheme = resolveTheme(options);
   const { fontImport, resolvedFont } = resolveFonts(options);
-
-  let cssVariables = ':root {\n';
-  for (const [key, value] of Object.entries(selectedTheme.variables)) {
-    cssVariables += `  ${key}: ${value};\n`;
-  }
-  cssVariables += '}\n';
+  const cssVariables = buildCssVariables(selectedTheme);
 
   // BiDi synchronization: Protects UI toolbars, headers, and tree indentation
   let shellDirRules = '';
@@ -1022,188 +1010,171 @@ a:hover, .header-list-item:hover, li:hover {
 // =================================================================
 // 3. MARKDOWN VIEWER & PDF RENDER ENGINE
 // =================================================================
-export function buildThemeCss(options: StyleOptions): string {
-  const selectedTheme = themes[options.themeKey] || themes['atom-one-dark'];
+/**
+ * Builds the document stylesheet for one target. `S` is the scope selector
+ * (`#rendered-md` or `body#tinymce`); every rule below is written once and
+ * keeps exactly the specificity it had when the two targets were spelled out
+ * side by side, so the cascade is unchanged – only the dead half is gone.
+ */
+export function buildThemeCss(options: StyleOptions, target: CssTarget = 'viewer'): string {
+  const isViewer = target !== 'tinymce';
+  const S = isViewer ? '#rendered-md' : 'body#tinymce';
+
+  const selectedTheme = resolveTheme(options);
   const { fontImport, resolvedFont, resolvedCodeFont } = resolveFonts(options);
   const headingSizes = resolveHeadingSizes(options);
+  const cssVariables = buildCssVariables(selectedTheme, `  --mermaid-font-family: ${resolvedFont} !important;\n`);
 
-  let cssVariables = ':root {\n';
-  for (const [key, value] of Object.entries(selectedTheme.variables)) {
-    cssVariables += `  ${key}: ${value};\n`;
-  }
-  cssVariables += `  --mermaid-font-family: ${resolvedFont} !important;\n`;
-  cssVariables += '}\n';
-
+  // Directional rules ------------------------------------------------------
   let dirRules = '';
   if (options.direction === 'rtl') {
     dirRules = `
-body#tinymce, body, #rendered-md { direction: rtl !important; text-align: right !important; }
-body#tinymce h1, #rendered-md h1 { text-align: right !important; }
-body#tinymce h2, #rendered-md h2 {
+body, ${S} { direction: rtl !important; text-align: right !important; }
+${S} h1 { text-align: right !important; }
+${S} h2 {
   border-right: 5px solid var(--od-h2) !important;
   border-left: none !important;
   padding-right: 12px !important;
   padding-left: 0 !important;
   text-align: right !important;
 }
-body#tinymce :is(h3, h4, h5, h6), #rendered-md :is(h3, h4, h5, h6) { text-align: right !important; }
-body#tinymce ul, body#tinymce ol, #rendered-md ul, #rendered-md ol {
+${S} :is(h3, h4, h5, h6) { text-align: right !important; }
+${S} :is(ul, ol) {
   direction: rtl !important;
   text-align: right !important;
   padding-right: 2.2em !important;
   padding-left: 0 !important;
 }
-#rendered-md li, body#tinymce li {
+${S} li {
   direction: rtl !important;
   text-align: right !important;
 }
-#rendered-md ul ul, #rendered-md ol ol, #rendered-md ul ol, #rendered-md ol ul,
-body#tinymce ul ul, body#tinymce ol ol, body#tinymce ul ol, body#tinymce ol ul {
+${S} :is(ul, ol) :is(ul, ol) {
   padding-right: 1.6em !important;
   padding-left: 0 !important;
 }
 .md-checkbox input[type="checkbox"] { margin-left: 8px !important; margin-right: 0 !important; }
 
 /* RTL Blockquotes: 1px Right Border & No Left Border */
-body#tinymce blockquote, #rendered-md blockquote {
+${S} blockquote {
   direction: rtl !important;
   text-align: right !important;
   border-right: 1px solid var(--od-comment) !important;
   border-left: 0 !important;
 }
-body#tinymce th, #rendered-md th, body#tinymce td, #rendered-md td { text-align: right !important; }
+${S} :is(th, td) { text-align: right !important; }
 .mermaid .nodeLabel, .mermaid .edgeLabel, .mermaid .label, .mermaid text {
   direction: rtl !important;
   unicode-bidi: plaintext !important;
 }
 
-#rendered-md [dir="ltr"], body#tinymce [dir="ltr"],
-#rendered-md [dir="ltr"] :is(h1, h2, h3, h4, h5, h6, p, li, blockquote, dt, dd),
-body#tinymce [dir="ltr"] :is(h1, h2, h3, h4, h5, h6, p, li, blockquote, dt, dd) {
+/* Explicit <div dir="ltr"> islands inside an RTL document */
+${S} [dir="ltr"],
+${S} [dir="ltr"] :is(h1, h2, h3, h4, h5, h6, p, li, blockquote, dt, dd) {
   direction: ltr !important;
   text-align: left !important;
 }
-#rendered-md [dir="ltr"] h2, body#tinymce [dir="ltr"] h2 {
+${S} [dir="ltr"] h2 {
   border-right: none !important;
   border-left: 5px solid var(--od-h2) !important;
   padding-left: 12px !important;
   padding-right: 0 !important;
 }
-#rendered-md [dir="ltr"] blockquote, body#tinymce [dir="ltr"] blockquote {
+${S} [dir="ltr"] blockquote {
   border-right: none !important;
   border-left: 1px solid var(--od-comment) !important;
   padding-left: 16px !important;
   padding-right: 12px !important;
 }
-#rendered-md [dir="ltr"] :is(ul, ol), body#tinymce [dir="ltr"] :is(ul, ol) {
+${S} [dir="ltr"] :is(ul, ol) {
   direction: ltr !important;
   text-align: left !important;
   padding-left: 1.6em !important;
   padding-right: 0 !important;
 }
-#rendered-md [dir="ltr"] :is(ul ul, ol ol, ul ol, ol ul), body#tinymce [dir="ltr"] :is(ul ul, ol ol, ul ol, ol ul) {
+${S} [dir="ltr"] :is(ul ul, ol ol, ul ol, ol ul) {
   padding-left: 1.4em !important;
   padding-right: 0 !important;
 }
-#rendered-md [dir="ltr"] .md-checkbox input[type="checkbox"], body#tinymce [dir="ltr"] .md-checkbox input[type="checkbox"] {
+${S} [dir="ltr"] .md-checkbox input[type="checkbox"] {
   margin-right: 8px !important;
   margin-left: 0 !important;
 }
-#rendered-md [dir="ltr"] table :is(th, td), body#tinymce [dir="ltr"] table :is(th, td) { text-align: left !important; }
+${S} [dir="ltr"] table :is(th, td) { text-align: left !important; }
 `;
   } else if (options.direction === 'auto') {
+    // `:is([dir="x"], :dir(x))` keeps the original `:dir()` fallback for raw
+    // HTML blocks while staying robust: `:is()` is forgiving, so on engines
+    // without `:dir()` the `[dir]` half still applies instead of the whole
+    // rule being discarded.
+    const RTL = ':is([dir="rtl"], :dir(rtl))';
+    const LTR = ':is([dir="ltr"], :dir(ltr))';
     dirRules = `
-body#tinymce, body, #rendered-md { direction: ltr !important; text-align: start !important; }
-#rendered-md :is(p, h1, h2, h3, h4, h5, h6, li, blockquote, dt, dd) {
+body, ${S} { direction: ltr !important; text-align: start !important; }
+${isViewer ? `${S} :is(p, h1, h2, h3, h4, h5, h6, li, blockquote, dt, dd) {
   unicode-bidi: plaintext !important;
   text-align: start !important;
-}
+}` : ''}
 
 /* =================================================================
    NATIVE BIDI LIST & MARKER ENGINE (RTL / LTR AWARE)
    ================================================================= */
-/* Default list indentation in auto mode */
-body#tinymce ul, body#tinymce ol,
-#rendered-md ul, #rendered-md ol {
+${S} :is(ul, ol) {
   padding-left: 2em !important;
   padding-right: 0 !important;
 }
 
-/* Explicit RTL lists and items (attributes and pseudo-classes supported) */
-#rendered-md ul[dir="rtl"], #rendered-md ol[dir="rtl"],
-body#tinymce ul[dir="rtl"], body#tinymce ol[dir="rtl"],
-#rendered-md ul:dir(rtl), #rendered-md ol:dir(rtl),
-body#tinymce ul:dir(rtl), body#tinymce ol:dir(rtl) {
+/* Explicit RTL lists and items */
+${S} :is(ul, ol)${RTL} {
   direction: rtl !important;
   text-align: right !important;
   padding-right: 2.2em !important;
   padding-left: 0 !important;
 }
-
-#rendered-md li[dir="rtl"], body#tinymce li[dir="rtl"],
-#rendered-md li:dir(rtl), body#tinymce li:dir(rtl) {
+${S} li${RTL} {
   direction: rtl !important;
   text-align: right !important;
 }
-
-#rendered-md ul[dir="rtl"] :is(ul, ol), #rendered-md ol[dir="rtl"] :is(ul, ol),
-body#tinymce ul[dir="rtl"] :is(ul, ol), body#tinymce ol[dir="rtl"] :is(ul, ol) {
+${S} :is(ul, ol)[dir="rtl"] :is(ul, ol) {
   padding-right: 1.6em !important;
   padding-left: 0 !important;
 }
 
 /* Explicit LTR lists and items */
-#rendered-md ul[dir="ltr"], #rendered-md ol[dir="ltr"],
-body#tinymce ul[dir="ltr"], body#tinymce ol[dir="ltr"],
-#rendered-md ul:dir(ltr), #rendered-md ol:dir(ltr),
-body#tinymce ul:dir(ltr), body#tinymce ol:dir(ltr) {
+${S} :is(ul, ol)${LTR} {
   direction: ltr !important;
   text-align: left !important;
   padding-left: 2em !important;
   padding-right: 0 !important;
 }
-
-#rendered-md li[dir="ltr"], body#tinymce li[dir="ltr"],
-#rendered-md li:dir(ltr), body#tinymce li:dir(ltr) {
+${S} li${LTR} {
   direction: ltr !important;
   text-align: left !important;
 }
-
-#rendered-md ul[dir="ltr"] :is(ul, ol), #rendered-md ol[dir="ltr"] :is(ul, ol),
-body#tinymce ul[dir="ltr"] :is(ul, ol), body#tinymce ol[dir="ltr"] :is(ul, ol) {
+${S} :is(ul, ol)[dir="ltr"] :is(ul, ol) {
   padding-left: 1.6em !important;
   padding-right: 0 !important;
 }
 
 /* BiDi Checkboxes */
-#rendered-md li[dir="rtl"] input[type="checkbox"],
-#rendered-md li:dir(rtl) input[type="checkbox"],
-body#tinymce li[dir="rtl"] input[type="checkbox"],
-body#tinymce li:dir(rtl) input[type="checkbox"] {
+${S} li${RTL} input[type="checkbox"] {
   margin-left: 8px !important;
   margin-right: 0 !important;
 }
-
-#rendered-md li[dir="ltr"] input[type="checkbox"],
-#rendered-md li:dir(ltr) input[type="checkbox"],
-body#tinymce li[dir="ltr"] input[type="checkbox"],
-body#tinymce li:dir(ltr) input[type="checkbox"] {
+${S} li${LTR} input[type="checkbox"] {
   margin-right: 8px !important;
   margin-left: 0 !important;
 }
 
 /* BiDi H2 Headings */
-#rendered-md h2[dir="rtl"], body#tinymce h2[dir="rtl"],
-#rendered-md h2:dir(rtl), body#tinymce h2:dir(rtl) {
+${S} h2${RTL} {
   border-right: 5px solid var(--od-h2) !important;
   border-left: none !important;
   padding-right: 12px !important;
   padding-left: 0 !important;
   text-align: right !important;
 }
-
-#rendered-md h2[dir="ltr"], body#tinymce h2[dir="ltr"],
-#rendered-md h2:dir(ltr), body#tinymce h2:dir(ltr) {
+${S} h2${LTR} {
   border-left: 5px solid var(--od-h2) !important;
   border-right: none !important;
   padding-left: 12px !important;
@@ -1212,8 +1183,7 @@ body#tinymce li:dir(ltr) input[type="checkbox"] {
 }
 
 /* BiDi Blockquotes */
-#rendered-md blockquote[dir="rtl"], body#tinymce blockquote[dir="rtl"],
-#rendered-md blockquote:dir(rtl), body#tinymce blockquote:dir(rtl) {
+${S} blockquote${RTL} {
   border-right: 1px solid var(--od-comment) !important;
   border-left: none !important;
   padding-right: 16px !important;
@@ -1221,9 +1191,7 @@ body#tinymce li:dir(ltr) input[type="checkbox"] {
   text-align: right !important;
   direction: rtl !important;
 }
-
-#rendered-md blockquote[dir="ltr"], body#tinymce blockquote[dir="ltr"],
-#rendered-md blockquote:dir(ltr), body#tinymce blockquote:dir(ltr) {
+${S} blockquote${LTR} {
   border-left: 1px solid var(--od-comment) !important;
   border-right: none !important;
   padding-left: 16px !important;
@@ -1232,31 +1200,32 @@ body#tinymce li:dir(ltr) input[type="checkbox"] {
   direction: ltr !important;
 }
 
-body#tinymce th, #rendered-md th, body#tinymce td, #rendered-md td { text-align: start !important; }
+${S} :is(th, td) { text-align: start !important; }
 .mermaid .nodeLabel, .mermaid .edgeLabel, .mermaid .label, .mermaid text { unicode-bidi: plaintext !important; }
 `;
   } else {
     dirRules = `
-body#tinymce, body, #rendered-md { direction: ltr !important; text-align: left !important; }
-body#tinymce h2, #rendered-md h2 {
+body, ${S} { direction: ltr !important; text-align: left !important; }
+${S} h2 {
   border-left: 5px solid var(--od-h2) !important;
   border-right: none !important;
   padding-left: 12px !important;
   padding-right: 0 !important;
 }
-body#tinymce ul, body#tinymce ol, #rendered-md ul, #rendered-md ol { padding-left: 2em !important; }
+${S} :is(ul, ol) { padding-left: 2em !important; }
 .md-checkbox input[type="checkbox"] { margin-right: 8px !important; margin-left: 0 !important; }
 
 /* LTR Blockquotes: 1px Left Border & No Right Border */
-body#tinymce blockquote, #rendered-md blockquote {
+${S} blockquote {
   border-left: 1px solid var(--od-comment) !important;
   border-right: 0 !important;
 }
-body#tinymce th, #rendered-md th, body#tinymce td, #rendered-md td { text-align: left !important; }
+${S} :is(th, td) { text-align: left !important; }
 .mermaid .nodeLabel, .mermaid .edgeLabel, .mermaid .label, .mermaid text { direction: ltr !important; }
 `;
   }
 
+  // Layout options ---------------------------------------------------------
   let contentWidthCss = '';
   if (options.contentMaxWidth === 'compact') {
     contentWidthCss = `max-width: 760px !important; margin: 0 auto !important;`;
@@ -1264,24 +1233,15 @@ body#tinymce th, #rendered-md th, body#tinymce td, #rendered-md td { text-align:
     contentWidthCss = `max-width: 920px !important; margin: 0 auto !important;`;
   }
 
-  const isPaperMode = options.pdfExportStyle === 'paper';
-  const printBodyBg = isPaperMode ? '#ffffff' : 'var(--od-bg)';
-  const printBodyFg = isPaperMode ? '#1e2227' : 'var(--od-fg)';
-  const { pageSize, margin } = resolvePdfSettings(options);
+  const PRE = `${S} pre:not(.mermaid):not(.joplin-source)`;
 
-  // In Exact Match mode, @page margin must be 0 so the theme background fills
-  // 100% of the physical paper canvas edge-to-edge (no unprinted white borders).
-  // Content spacing is applied as padding on body / #rendered-md instead.
-  // In Paper Friendly mode, standard @page margins apply to the white page.
-  const pageRuleMargin = isPaperMode ? margin : '0';
-  const contentPadding = isPaperMode ? '0' : margin;
-
+  // Core document styles ---------------------------------------------------
   const coreStyles = `
 *, *::before, *::after { box-sizing: border-box !important; }
-html, body, #rendered-md { max-width: 100% !important; overflow-x: hidden !important; }
+html, body${isViewer ? ', #rendered-md' : ''} { max-width: 100% !important; overflow-x: hidden !important; }
 ::selection { background-color: var(--od-selection) !important; }
 
-body#tinymce, body, #rendered-md {
+body, ${S} {
   font-family: ${resolvedFont} !important;
   line-height: ${options.lineHeight} !important;
   font-size: ${options.fontSize} !important;
@@ -1292,10 +1252,8 @@ body#tinymce, body, #rendered-md {
   -webkit-font-smoothing: antialiased !important;
   -moz-osx-font-smoothing: grayscale !important;
 }
-
-#rendered-md { ${contentWidthCss} }
-
-body#tinymce h1, #rendered-md h1 {
+${isViewer && contentWidthCss ? `\n#rendered-md { ${contentWidthCss} }\n` : ''}
+${S} h1 {
   color: var(--od-h1) !important;
   font-size: ${headingSizes.h1} !important;
   font-weight: 800 !important;
@@ -1304,32 +1262,30 @@ body#tinymce h1, #rendered-md h1 {
   border-bottom: 2px solid var(--od-h1) !important;
 }
 
-body#tinymce h2, #rendered-md h2 {
+${S} h2 {
   color: var(--od-h2) !important;
   font-size: ${headingSizes.h2} !important;
   font-weight: 700 !important;
   margin: 28px 0 18px 0 !important;
 }
 
-body#tinymce h3, #rendered-md h3 { color: var(--od-h3) !important; font-size: ${headingSizes.h3} !important; font-weight: 600 !important; margin: 24px 0 14px 0 !important; }
-body#tinymce h4, #rendered-md h4 { color: var(--od-h4) !important; font-size: ${headingSizes.h4} !important; font-weight: 600 !important; margin: 20px 0 12px 0 !important; }
-body#tinymce h5, #rendered-md h5 { color: var(--od-h5) !important; font-size: ${headingSizes.h5} !important; font-weight: 600 !important; margin: 18px 0 10px 0 !important; }
-body#tinymce h6, #rendered-md h6 { color: var(--od-h6) !important; font-size: ${headingSizes.h6} !important; font-weight: 700 !important; margin: 16px 0 10px 0 !important; }
+${S} h3 { color: var(--od-h3) !important; font-size: ${headingSizes.h3} !important; font-weight: 600 !important; margin: 24px 0 14px 0 !important; }
+${S} h4 { color: var(--od-h4) !important; font-size: ${headingSizes.h4} !important; font-weight: 600 !important; margin: 20px 0 12px 0 !important; }
+${S} h5 { color: var(--od-h5) !important; font-size: ${headingSizes.h5} !important; font-weight: 600 !important; margin: 18px 0 10px 0 !important; }
+${S} h6 { color: var(--od-h6) !important; font-size: ${headingSizes.h6} !important; font-weight: 700 !important; margin: 16px 0 10px 0 !important; }
 
-#rendered-md li, body#tinymce li { margin-bottom: 0.45em !important; line-height: ${options.lineHeight} !important; }
-#rendered-md li::marker, body#tinymce li::marker { color: var(--od-h2) !important; font-weight: bold !important; }
+${S} li { margin-bottom: 0.45em !important; line-height: ${options.lineHeight} !important; }
+${S} li::marker { color: var(--od-h2) !important; font-weight: bold !important; }
 
 .md-checkbox input[type="checkbox"] { vertical-align: middle !important; cursor: pointer !important; }
-#rendered-md li:has(input[type="checkbox"]:checked),
-body#tinymce li:has(input[type="checkbox"]:checked) {
+${S} li:has(input[type="checkbox"]:checked) {
   opacity: 0.55 !important;
   text-decoration: line-through !important;
   transition: opacity 0.2s ease !important;
 }
-#rendered-md li:has(input[type="checkbox"]:checked) code,
-body#tinymce li:has(input[type="checkbox"]:checked) code { opacity: 0.8 !important; text-decoration: none !important; }
+${S} li:has(input[type="checkbox"]:checked) code { opacity: 0.8 !important; text-decoration: none !important; }
 
-#rendered-md img, body#tinymce img {
+${S} img {
   max-width: 100% !important;
   max-height: 520px !important;
   height: auto !important;
@@ -1340,20 +1296,20 @@ body#tinymce li:has(input[type="checkbox"]:checked) code { opacity: 0.8 !importa
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08) !important;
 }
 
-body#tinymce a, #rendered-md a { color: var(--od-link) !important; text-decoration: none !important; transition: color 0.15s ease !important; }
-body#tinymce a:hover, #rendered-md a:hover { color: var(--od-link-hover) !important; text-decoration: underline !important; }
+${S} a { color: var(--od-link) !important; text-decoration: none !important; transition: color 0.15s ease !important; }
+${S} a:hover { color: var(--od-link-hover) !important; text-decoration: underline !important; }
 
-#rendered-md a[href^=":/"], body#tinymce a[href^=":/"] {
+${S} a[href^=":/"] {
   font-weight: 600 !important;
   border-bottom: 1.5px dashed var(--od-link) !important;
   text-decoration: none !important;
 }
-#rendered-md a[href^=":/"]:hover, body#tinymce a[href^=":/"]:hover { border-bottom-style: solid !important; }
+${S} a[href^=":/"]:hover { border-bottom-style: solid !important; }
 
 /* =================================================================
    BLOCKQUOTES: CLEAN MINIMAL 1PX STYLE (TRANSPARENT BG, NO RADIUS)
    ================================================================= */
-body#tinymce blockquote, #rendered-md blockquote {
+${S} blockquote {
   padding: 10px 16px !important;
   margin: 18px 0 !important;
   background: transparent !important;
@@ -1372,11 +1328,11 @@ kbd {
   box-shadow: 0 1px 0 rgba(0,0,0,0.2) !important;
 }
 
-body#tinymce .joplin-source, #rendered-md .joplin-source, pre.joplin-source, div.joplin-editable > pre.joplin-source {
+${S} .joplin-source, pre.joplin-source, div.joplin-editable > pre.joplin-source {
   display: none !important; visibility: hidden !important; height: 0 !important; margin: 0 !important; padding: 0 !important; border: none !important;
 }
 
-body#tinymce code, #rendered-md code {
+${S} code {
   font-family: ${resolvedCodeFont} !important;
   background-color: var(--od-code-bg) !important;
   color: var(--od-code-fg) !important;
@@ -1385,8 +1341,7 @@ body#tinymce code, #rendered-md code {
   font-size: 0.9em !important;
 }
 
-body#tinymce pre:not(.mermaid):not(.joplin-source),
-#rendered-md pre:not(.mermaid):not(.joplin-source) {
+${PRE} {
   direction: ltr !important;
   text-align: left !important;
   unicode-bidi: isolate !important;
@@ -1408,8 +1363,7 @@ body#tinymce pre:not(.mermaid):not(.joplin-source),
   scrollbar-color: var(--od-scrollbar-thumb) var(--od-scrollbar-track) !important;
 }
 
-body#tinymce pre:not(.mermaid):not(.joplin-source) code,
-#rendered-md pre:not(.mermaid):not(.joplin-source) code {
+${PRE} code {
   background-color: transparent !important;
   color: var(--od-fg) !important;
   padding: 0 !important;
@@ -1418,7 +1372,7 @@ body#tinymce pre:not(.mermaid):not(.joplin-source) code,
   min-width: 100% !important;
 }
 
-body#tinymce :is(p, li) code, #rendered-md :is(p, li) code {
+${S} :is(p, li) code {
   direction: ltr !important;
   display: inline-block !important;
   unicode-bidi: embed !important;
@@ -1430,17 +1384,14 @@ body#tinymce :is(p, li) code, #rendered-md :is(p, li) code {
 }
 
 /* Explicit Table Font Inheritance */
-body#tinymce table, #rendered-md table,
-body#tinymce th, #rendered-md th,
-body#tinymce td, #rendered-md td {
+${S} :is(table, th, td) {
   font-family: ${resolvedFont} !important;
 }
-body#tinymce table :is(th, td) code,
-#rendered-md table :is(th, td) code {
+${S} table :is(th, td) code {
   font-family: ${resolvedCodeFont} !important;
 }
 
-body#tinymce table, #rendered-md table {
+${S} table {
   border-collapse: collapse !important;
   width: 100% !important;
   max-width: 100% !important;
@@ -1455,7 +1406,7 @@ body#tinymce table, #rendered-md table {
   color: var(--od-fg) !important;
 }
 
-body#tinymce th, #rendered-md th {
+${S} th {
   background-color: var(--od-table-th) !important;
   color: var(--od-link) !important;
   font-weight: bold !important;
@@ -1464,18 +1415,17 @@ body#tinymce th, #rendered-md th {
   white-space: nowrap !important;
 }
 
-body#tinymce td, #rendered-md td {
+${S} td {
   border: 1px solid var(--od-border) !important;
   padding: 8px 12px !important;
   color: var(--od-fg) !important;
 }
 
-body#tinymce tr:nth-child(even), #rendered-md tr:nth-child(even) { background-color: var(--od-table-even) !important; }
-body#tinymce tr:nth-child(odd), #rendered-md tr:nth-child(odd) { background-color: var(--od-table-odd) !important; }
+${S} tr:nth-child(even) { background-color: var(--od-table-even) !important; }
+${S} tr:nth-child(odd) { background-color: var(--od-table-odd) !important; }
 
 /* Mermaid Diagrams */
-#rendered-md .mermaid, #rendered-md div.mermaid, #rendered-md pre.mermaid,
-body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
+${S} .mermaid, ${S} div.mermaid, ${S} pre.mermaid {
   display: block !important;
   text-align: center !important;
   width: 100% !important;
@@ -1492,7 +1442,7 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   border: 1px solid var(--od-mermaid-border) !important;
   border-radius: 8px !important;
 }
-
+${isViewer ? `
 #rendered-md .mermaid svg, #rendered-md div.mermaid svg, #rendered-md pre.mermaid svg {
   display: inline-block !important;
   vertical-align: middle !important;
@@ -1501,7 +1451,7 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   max-width: 100% !important;
   width: auto !important;
 }
-
+` : ''}
 .mermaid foreignObject { overflow: visible !important; }
 .mermaid foreignObject div {
   display: flex !important;
@@ -1539,7 +1489,7 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   padding: 6px 0 !important;
 }
 
-#rendered-md .table-of-contents, body#tinymce .table-of-contents {
+${S} .table-of-contents {
   background-color: var(--od-bg-alt) !important;
   border: 1px solid var(--od-border) !important;
   border-radius: 6px !important;
@@ -1548,9 +1498,9 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   display: inline-block !important;
   min-width: min(100%, 300px) !important;
 }
-#rendered-md .table-of-contents ul { margin: 4px 0 !important; }
+${isViewer ? `#rendered-md .table-of-contents ul { margin: 4px 0 !important; }` : ''}
 
-#rendered-md .footnotes, body#tinymce .footnotes {
+${S} .footnotes {
   margin-top: 40px !important;
   padding-top: 16px !important;
   border-top: 1px solid var(--od-border) !important;
@@ -1558,44 +1508,35 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
   color: var(--od-comment) !important;
 }
 
-/* Mobile Responsiveness (< 768px) */
+/* Mobile Responsiveness (< 768px) – only the values that actually differ from the base rules */
 @media screen and (max-width: 768px) {
-  body#tinymce, body, #rendered-md {
-    font-size: ${options.fontSize} !important;
-    line-height: ${options.lineHeight} !important;
-    max-width: 100% !important;
-    overflow-x: hidden !important;
-  }
-  body#tinymce h1, #rendered-md h1 { font-size: calc(${headingSizes.h1} * 0.9) !important; margin: 20px 0 12px 0 !important; }
-  body#tinymce h2, #rendered-md h2 { font-size: calc(${headingSizes.h2} * 0.92) !important; margin: 18px 0 10px 0 !important; }
-  body#tinymce h3, #rendered-md h3 { font-size: ${headingSizes.h3} !important; margin: 16px 0 8px 0 !important; }
-  #rendered-md img, body#tinymce img { max-height: 420px !important; }
-
-  body#tinymce pre:not(.mermaid):not(.joplin-source),
-  #rendered-md pre:not(.mermaid):not(.joplin-source) {
-    font-size: 0.9em !important;
-    padding: 10px 12px !important;
-    white-space: pre !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-  body#tinymce table, #rendered-md table {
-    font-size: 0.9em !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-  #rendered-md .mermaid, body#tinymce .mermaid {
-    padding: 14px 8px !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    overflow-x: auto !important;
-  }
+  ${isViewer && contentWidthCss ? `#rendered-md { max-width: 100% !important; } /* Reading Width is a desktop feature */` : ''}
+  ${S} h1 { font-size: calc(${headingSizes.h1} * 0.9) !important; margin: 20px 0 12px 0 !important; }
+  ${S} h2 { font-size: calc(${headingSizes.h2} * 0.92) !important; margin: 18px 0 10px 0 !important; }
+  ${S} h3 { margin: 16px 0 8px 0 !important; }
+  ${S} img { max-height: 420px !important; }
+  ${PRE} { font-size: 0.9em !important; padding: 10px 12px !important; }
+  ${S} table { font-size: 0.9em !important; }
+  ${S} .mermaid { padding: 14px 8px !important; }
 }
+`;
 
+  // Print / PDF (viewer only – the Rich Text iframe is never printed) ------
+  let printStyles = '';
+  if (isViewer) {
+    const isPaperMode = options.pdfExportStyle === 'paper';
+    const printBodyBg = isPaperMode ? '#ffffff' : 'var(--od-bg)';
+    const printBodyFg = isPaperMode ? '#1e2227' : 'var(--od-fg)';
+    const { pageSize, margin } = resolvePdfSettings(options);
+
+    // In Exact Match mode, @page margin must be 0 so the theme background fills
+    // 100% of the physical paper canvas edge-to-edge (no unprinted white borders).
+    // Content spacing is applied as padding on body / #rendered-md instead.
+    // In Paper Friendly mode, standard @page margins apply to the white page.
+    const pageRuleMargin = isPaperMode ? margin : '0';
+    const contentPadding = isPaperMode ? '0' : margin;
+
+    printStyles = `
 /* =================================================================
    FLAWLESS PDF & PRINT EXPORT ENGINE
    ================================================================= */
@@ -1626,13 +1567,10 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
     line-height: ${options.lineHeight} !important;
   }
 
-  body#tinymce table, #rendered-md table,
-  body#tinymce th, #rendered-md th,
-  body#tinymce td, #rendered-md td {
+  #rendered-md :is(table, th, td) {
     font-family: ${resolvedFont} !important;
   }
 
-  body#tinymce table :is(th, td) code,
   #rendered-md table :is(th, td) code {
     font-family: ${resolvedCodeFont} !important;
   }
@@ -1649,14 +1587,14 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
     break-after: avoid !important;
   }
 
-  body#tinymce h1, #rendered-md h1 { color: var(--od-h1) !important; page-break-after: avoid !important; break-after: avoid !important; }
-  body#tinymce h2, #rendered-md h2 { color: var(--od-h2) !important; page-break-after: avoid !important; break-after: avoid !important; }
-  body#tinymce h3, #rendered-md h3 { color: var(--od-h3) !important; page-break-after: avoid !important; break-after: avoid !important; }
-  body#tinymce h4, #rendered-md h4 { color: var(--od-h4) !important; page-break-after: avoid !important; break-after: avoid !important; }
-  body#tinymce h5, #rendered-md h5 { color: var(--od-h5) !important; page-break-after: avoid !important; break-after: avoid !important; }
-  body#tinymce h6, #rendered-md h6 { color: var(--od-h6) !important; page-break-after: avoid !important; break-after: avoid !important; }
+  #rendered-md h1 { color: var(--od-h1) !important; page-break-after: avoid !important; break-after: avoid !important; }
+  #rendered-md h2 { color: var(--od-h2) !important; page-break-after: avoid !important; break-after: avoid !important; }
+  #rendered-md h3 { color: var(--od-h3) !important; page-break-after: avoid !important; break-after: avoid !important; }
+  #rendered-md h4 { color: var(--od-h4) !important; page-break-after: avoid !important; break-after: avoid !important; }
+  #rendered-md h5 { color: var(--od-h5) !important; page-break-after: avoid !important; break-after: avoid !important; }
+  #rendered-md h6 { color: var(--od-h6) !important; page-break-after: avoid !important; break-after: avoid !important; }
 
-  body#tinymce table, #rendered-md table {
+  #rendered-md table {
     display: table !important;
     width: 100% !important;
     max-width: 100% !important;
@@ -1667,16 +1605,15 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
     margin: 16px 0 !important;
   }
 
-  body#tinymce tr, #rendered-md tr { page-break-inside: avoid !important; break-inside: avoid !important; }
-  body#tinymce th, #rendered-md th, body#tinymce td, #rendered-md td {
+  #rendered-md tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+  #rendered-md :is(th, td) {
     white-space: normal !important;
     word-break: break-word !important;
     overflow-wrap: break-word !important;
     padding: 6px 10px !important;
   }
 
-  body#tinymce pre:not(.mermaid):not(.joplin-source),
-  #rendered-md pre:not(.mermaid):not(.joplin-source) {
+  ${PRE} {
     white-space: pre-wrap !important;
     word-break: break-word !important;
     overflow-wrap: break-word !important;
@@ -1689,14 +1626,13 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
     margin: 14px 0 !important;
   }
 
-  body#tinymce pre:not(.mermaid):not(.joplin-source) code,
-  #rendered-md pre:not(.mermaid):not(.joplin-source) code {
+  ${PRE} code {
     white-space: pre-wrap !important;
     display: block !important;
     min-width: 100% !important;
   }
 
-  #rendered-md .mermaid, body#tinymce .mermaid {
+  #rendered-md .mermaid {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
     overflow: visible !important;
@@ -1706,21 +1642,21 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
     margin: 18px auto !important;
   }
 
-  #rendered-md .mermaid svg, body#tinymce .mermaid svg {
+  #rendered-md .mermaid svg {
     max-width: 100% !important;
     height: auto !important;
     display: block !important;
     margin: 0 auto !important;
   }
 
-  #rendered-md img, body#tinymce img {
+  #rendered-md img {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
     max-width: 100% !important;
     height: auto !important;
   }
 
-  body#tinymce blockquote, #rendered-md blockquote {
+  #rendered-md blockquote {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
     background-color: transparent !important;
@@ -1732,12 +1668,15 @@ body#tinymce .mermaid, body#tinymce div.mermaid, body#tinymce pre.mermaid {
     overflow: visible !important;
   }
 }
+`;
+  }
 
+  const scrollbarStyles = `
 ::-webkit-scrollbar { width: 8px !important; height: 8px !important; }
 ::-webkit-scrollbar-track { background: var(--od-scrollbar-track) !important; border-radius: 4px !important; }
 ::-webkit-scrollbar-thumb { background: var(--od-scrollbar-thumb) !important; border-radius: 4px !important; }
 ::-webkit-scrollbar-thumb:hover { background: var(--od-scrollbar-hover) !important; }
 `;
 
-  return `${fontImport}\n${cssVariables}\n${dirRules}\n${coreStyles}`;
+  return compactCss(`${fontImport}\n${cssVariables}\n${dirRules}\n${coreStyles}${printStyles}${scrollbarStyles}`);
 }
