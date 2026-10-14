@@ -977,6 +977,49 @@ div.joplin-plugin-view iframe {
 }
 
 // =================================================================
+// 2b. THIRD-PARTY PLUGIN PANEL (WEBVIEW) THEMING
+// =================================================================
+export function buildPanelCss(options: StyleOptions): string {
+  const chromeCss = buildChromeCss(options);
+  if (!chromeCss) return '';
+  return `${chromeCss}
+:root {
+  --joplin-background-color: var(--od-bg) !important;
+  --joplin-background-color-transparent30: var(--od-selection) !important;
+  --joplin-color: var(--od-fg) !important;
+  --joplin-color-hover: var(--od-link) !important;
+  --joplin-divider-color: var(--od-border) !important;
+}
+*, *::before, *::after {
+  border-color: var(--od-border) !important;
+}
+body, html, #root, #app, .panel, header, .header, nav, .toolbar, .search-container, .top-bar {
+  background-color: var(--od-bg) !important;
+  color: var(--od-fg) !important;
+}
+header, .header, nav, .toolbar, .search-container, .top-bar, .search-box {
+  background-color: var(--od-bg-alt) !important;
+  border-bottom: 1px solid var(--od-border) !important;
+}
+input, input[type="text"], input[type="search"] {
+  background-color: var(--od-bg) !important;
+  color: var(--od-fg) !important;
+  border: 1px solid var(--od-border) !important;
+}
+a, span, div, li, p, i, button {
+  color: var(--od-fg) !important;
+}
+svg, path {
+  fill: var(--od-fg) !important;
+  color: var(--od-fg) !important;
+}
+a:hover, .header-list-item:hover, li:hover {
+  background-color: var(--od-selection) !important;
+}
+`;
+}
+
+// =================================================================
 // 3. MARKDOWN VIEWER & PDF RENDER ENGINE
 // =================================================================
 export function buildThemeCss(options: StyleOptions): string {
@@ -1427,8 +1470,6 @@ body#tinymce td, #rendered-md td {
   color: var(--od-fg) !important;
 }
 
-#rendered-md table td :not(code):not(pre):not(a),
-body#tinymce table td :not(code):not(pre):not(a) { color: var(--od-fg) !important; }
 body#tinymce tr:nth-child(even), #rendered-md tr:nth-child(even) { background-color: var(--od-table-even) !important; }
 body#tinymce tr:nth-child(odd), #rendered-md tr:nth-child(odd) { background-color: var(--od-table-odd) !important; }
 
