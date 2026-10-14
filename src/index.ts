@@ -372,7 +372,7 @@ joplin.plugins.register({
 
         return {
           editorCss: config.editorEnabled ? buildEditorCss(config.options) : '',
-          viewerCss: buildThemeCss(config.options),
+          viewerCss: buildThemeCss(config.options, 'tinymce'), // Rich Text iframe only; the viewer builds its own
           panelCss: !isMobile && config.shellEnabled ? buildPanelCss(config.options) : '',
           platform,
         };
