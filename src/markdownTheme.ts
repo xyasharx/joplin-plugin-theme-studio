@@ -60,12 +60,15 @@ function getMemoizedViewerCss(pluginOptions: any): string {
 }
 
 const RTL_REGEX = /[\u0591-\u07FF\uFB1D-\uFDFD\uFE70-\uFEFC]/;
+// First character that is not whitespace, an ASCII digit, punctuation or a symbol.
+const FIRST_SIGNIFICANT_CHAR = /[^\s0-9\p{P}\p{S}]/u;
 
 function isRtlContent(str: string): boolean {
   if (!str) return false;
-  const stripped = str.replace(/[\s0-9\p{P}\p{S}]/gu, '');
-  if (!stripped) return false;
-  return RTL_REGEX.test(stripped[0]);
+  // Stops at the first significant character instead of rewriting the whole
+  // block: O(1) in the common case rather than O(length) per paragraph.
+  const match = FIRST_SIGNIFICANT_CHAR.exec(str);
+  return match ? RTL_REGEX.test(match[0]) : false;
 }
 
 module.exports = {
