@@ -1,6 +1,6 @@
 import joplin from 'api';
 import { ContentScriptType, SettingItemType } from 'api/types';
-import { buildEditorCss, buildThemeCss, buildChromeCss, StyleOptions } from './styles';
+import { buildEditorCss, buildThemeCss, buildChromeCss, buildPanelCss, StyleOptions } from './styles';
 
 joplin.plugins.register({
   onStart: async function () {
