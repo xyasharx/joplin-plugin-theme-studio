@@ -8,6 +8,19 @@ joplin.plugins.register({
     let defaultFontPreset = 'inter';
     let lastWrittenChromeCss: string | null = null;
 
+    // Platform detection: the application-shell CSS and iframe handling are
+    // desktop-only. Older API versions do not expose `platform`; assume desktop.
+    let platform: 'desktop' | 'mobile' | 'unknown' = 'desktop';
+    try {
+      const info = typeof joplin.versionInfo === 'function' ? await joplin.versionInfo() : null;
+      if (info && (info.platform === 'mobile' || info.platform === 'desktop')) {
+        platform = info.platform;
+      }
+    } catch (err) {
+      console.warn('[Theme Studio] Could not detect platform. Assuming desktop:', err);
+    }
+    const isMobile = platform === 'mobile';
+
     try {
       let userLocale = '';
       if (typeof joplin.settings.globalValues === 'function') {
@@ -307,19 +320,24 @@ joplin.plugins.register({
     }
 
     async function syncDesktopChromeFile(options: StyleOptions, enabled: boolean): Promise<void> {
+      if (isMobile) return;
       try {
         if (joplin.window && typeof (joplin.window as any).loadChromeCssFile === 'function') {
           const content = enabled ? buildChromeCss(options) : '';
           if (content === lastWrittenChromeCss) {
             return;
           }
-          lastWrittenChromeCss = content;
 
+          // Joplin de-duplicates this path and re-creates its <link>; Blink gives
+          // local files a zero freshness lifetime on desktop, so the new content
+          // is picked up immediately. This is the single source of truth for the
+          // application shell – the content script must not inject a copy.
           const fs = joplin.require('fs-extra');
           const dataDir: string = await joplin.plugins.dataDir();
           const chromeCssPath = `${dataDir}/theme-studio-chrome.css`;
           await fs.writeFile(chromeCssPath, content, 'utf8');
           await (joplin.window as any).loadChromeCssFile(chromeCssPath);
+          lastWrittenChromeCss = content; // only after success, so failures are retried
         }
       } catch (err) {
         console.warn('[Theme Studio] Could not synchronize desktop chrome stylesheet:', err);
@@ -355,7 +373,8 @@ joplin.plugins.register({
         return {
           editorCss: config.editorEnabled ? buildEditorCss(config.options) : '',
           viewerCss: buildThemeCss(config.options),
-          chromeCss: config.shellEnabled ? buildChromeCss(config.options) : '',
+          panelCss: !isMobile && config.shellEnabled ? buildPanelCss(config.options) : '',
+          platform,
         };
       }
       return null;
