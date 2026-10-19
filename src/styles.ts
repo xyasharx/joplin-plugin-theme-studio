@@ -413,9 +413,7 @@ ${dirCss}
 export function buildChromeCss(options: StyleOptions): string {
   const selectedTheme = resolveTheme(options);
   const { fontImport, resolvedFont } = resolveFonts(options);
-  const cssVariables = buildCssVariables(selectedTheme);
 
-  // BiDi synchronization: Protects UI toolbars, headers, and tree indentation
   let shellDirRules = '';
   if (options.direction === 'rtl') {
     shellDirRules = `
@@ -687,6 +685,19 @@ div.rli-noteList > div {
   background: var(--od-bg) !important;
   border-right: 1px solid var(--od-border) !important;
   border-left: 1px solid var(--od-border) !important;
+  font-family: ${resolvedFont} !important;
+}
+
+/* The font must be set on the text elements, not only on their containers:
+   Joplin declares font-family directly on .title, .emptylist and the sidebar
+   labels, and a direct declaration always beats an inherited one. */
+.note-list .title,
+.note-list .title span,
+.note-list .emptylist,
+.sidebar .title,
+.sidebar .tag-label,
+.sidebar .all-notes,
+.sidebar-header-container span {
   font-family: ${resolvedFont} !important;
 }
 
