@@ -414,6 +414,14 @@ export function buildChromeCss(options: StyleOptions): string {
   const selectedTheme = resolveTheme(options);
   const { fontImport, resolvedFont } = resolveFonts(options);
 
+  // Joplin paints the sidebar and note list with rules such as
+  //   .base-text { font-family: var(--joplin-font-family); }
+  // applied to the text elements themselves. A font set on the container is
+  // only inherited, and inheritance always loses to a direct declaration - so
+  // redefining the variable they read is what actually changes the UI font.
+  const cssVariables = buildCssVariables(selectedTheme, `  --joplin-font-family: ${resolvedFont} !important;\n`);
+
+  // BiDi synchronization: Protects UI toolbars, headers, and tree indentation
   let shellDirRules = '';
   if (options.direction === 'rtl') {
     shellDirRules = `
