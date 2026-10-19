@@ -29,11 +29,12 @@ function getMemoizedViewerCss(pluginOptions: any): string {
   const pdfPageSize = readSetting(pluginOptions, 'pdfPageSize', 'a4');
   const pdfPageMargin = readSetting(pluginOptions, 'pdfPageMargin', 'standard');
   const customPdfMargin = readSetting(pluginOptions, 'customPdfMargin', '15mm 18mm');
+  const customCss = readSetting(pluginOptions, 'customCss', '');
   const headingSizePreset = readSetting(pluginOptions, 'headingSizePreset', 'balanced');
   const customHeadingSizes = readSetting(pluginOptions, 'customHeadingSizes', '1.75em, 1.42em, 1.25em, 1.12em, 1.05em, 1.0em');
 
   // Fast cache key comparison
-  const cacheKey = `${themeKey}|${direction}|${fontPreset}|${fontSize}|${lineHeight}|${fontFamily}|${codeFontPreset}|${codeFont}|${contentMaxWidth}|${pdfExportStyle}|${pdfPageSize}|${pdfPageMargin}|${customPdfMargin}|${headingSizePreset}|${customHeadingSizes}`;
+  const cacheKey = `${themeKey}|${direction}|${fontPreset}|${fontSize}|${lineHeight}|${fontFamily}|${codeFontPreset}|${codeFont}|${contentMaxWidth}|${pdfExportStyle}|${pdfPageSize}|${pdfPageMargin}|${customPdfMargin}|${headingSizePreset}|${customHeadingSizes}|${customCss}`;
 
   if (cacheKey !== lastViewerCacheKey || !cachedViewerCss) {
     lastViewerCacheKey = cacheKey;
@@ -53,6 +54,7 @@ function getMemoizedViewerCss(pluginOptions: any): string {
       customPdfMargin,
       headingSizePreset,
       customHeadingSizes,
+      customCss,
     });
   }
 
