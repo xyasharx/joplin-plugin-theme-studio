@@ -1,6 +1,7 @@
 import joplin from 'api';
 import { ContentScriptType, SettingItemType } from 'api/types';
 import { buildEditorCss, buildThemeCss, buildChromeCss, buildPanelCss, StyleOptions } from './styles';
+import { themes } from './themes';
 
 joplin.plugins.register({
   onStart: async function () {
@@ -260,6 +261,14 @@ joplin.plugins.register({
         label: 'Custom PDF Page Margins',
         description: 'Active only when "Custom Margins" is selected above (e.g., "15mm 18mm", "1in", "10mm 15mm 10mm 15mm").',
       },
+      'customCss': {
+        value: '',
+        type: SettingItemType.String,
+        section: 'themeStudioSection',
+        public: true,
+        label: 'Custom CSS for notes',
+        description: 'Extra CSS appended after the theme stylesheet (notes and Rich Text editor). Keep it on one line, e.g. "#rendered-md h1 { letter-spacing: -0.5px; }".',
+      },
     });
 
     const settingKeys = [
@@ -280,6 +289,7 @@ joplin.plugins.register({
       'pdfPageSize',
       'pdfPageMargin',
       'customPdfMargin',
+      'customCss',
     ];
 
     async function getAllCurrentValues(): Promise<{ options: StyleOptions; editorEnabled: boolean; shellEnabled: boolean }> {
@@ -310,6 +320,7 @@ joplin.plugins.register({
         pdfPageSize: vals['pdfPageSize'] || 'a4',
         pdfPageMargin: vals['pdfPageMargin'] || 'standard',
         customPdfMargin: vals['customPdfMargin'] || '15mm 18mm',
+        customCss: vals['customCss'] || '',
       };
 
       return {
@@ -357,14 +368,70 @@ joplin.plugins.register({
       await syncDesktopChromeFile(currentConfig.options, currentConfig.shellEnabled);
     });
 
-    // 3. Register CodeMirror Editor Content Script
+    // 3. Commands (Command Palette, Keyboard Shortcuts screen)
+    const themeKeys = Object.keys(themes);
+
+    const applyCurrentConfig = async (): Promise<void> => {
+      const cfg = await getAllCurrentValues();
+      await syncDesktopChromeFile(cfg.options, cfg.shellEnabled);
+    };
+
+    await joplin.commands.register({
+      name: 'themeStudio.nextTheme',
+      label: 'Theme Studio: Next colour theme',
+      iconName: 'fas fa-palette',
+      execute: async () => {
+        const cfg = await getAllCurrentValues();
+        const index = themeKeys.indexOf(cfg.options.themeKey);
+        const next = themeKeys[(index + 1) % themeKeys.length];
+        await joplin.settings.setValue('theme', next);
+        await applyCurrentConfig();
+      },
+    });
+
+    await joplin.commands.register({
+      name: 'themeStudio.toggleShell',
+      label: 'Theme Studio: Toggle application shell theming',
+      iconName: 'fas fa-columns',
+      execute: async () => {
+        const cfg = await getAllCurrentValues();
+        await joplin.settings.setValue('themeApplicationShell', !cfg.shellEnabled);
+        await applyCurrentConfig();
+      },
+    });
+
+    await joplin.commands.register({
+      name: 'themeStudio.toggleEditor',
+      label: 'Theme Studio: Toggle Markdown editor theming',
+      iconName: 'fas fa-code',
+      execute: async () => {
+        const cfg = await getAllCurrentValues();
+        await joplin.settings.setValue('enableEditorTheme', !cfg.editorEnabled);
+      },
+    });
+
+    await joplin.commands.register({
+      name: 'themeStudio.copyCss',
+      label: 'Theme Studio: Copy generated note CSS to clipboard',
+      iconName: 'fas fa-copy',
+      execute: async () => {
+        const cfg = await getAllCurrentValues();
+        try {
+          await joplin.clipboard.writeText(buildThemeCss(cfg.options, 'viewer'));
+        } catch (err) {
+          console.warn('[Theme Studio] Could not copy the CSS to the clipboard:', err);
+        }
+      },
+    });
+
+    // 4. Register CodeMirror Editor Content Script
     await joplin.contentScripts.register(
       ContentScriptType.CodeMirrorPlugin,
       'themeStudioCodeMirror',
       './codeMirrorTheme.js'
     );
 
-    // 4. Respond to style requests (CodeMirror + TinyMCE Rich Text + Shell Chrome)
+    // 5. Respond to style requests (CodeMirror + TinyMCE Rich Text + Shell Chrome)
     await joplin.contentScripts.onMessage('themeStudioCodeMirror', async (message: any) => {
       if (message && (message.type === 'getAllStyles' || message.type === 'getEditorStyles')) {
         const config = await getAllCurrentValues();
@@ -380,7 +447,7 @@ joplin.plugins.register({
       return null;
     });
 
-    // 5. Register Markdown Viewer Content Script
+    // 6. Register Markdown Viewer Content Script
     await joplin.contentScripts.register(
       ContentScriptType.MarkdownItPlugin,
       'themeStudioMarkdownIt',
