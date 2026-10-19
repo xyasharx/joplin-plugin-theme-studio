@@ -18,7 +18,6 @@ export interface StyleOptions {
   customPdfMargin?: string;
   customCss?: string;
 }
-}
 
 /**
  * Where the document stylesheet will live.
@@ -268,6 +267,147 @@ function resolveFonts(options: StyleOptions) {
 
 // =================================================================
 // 1. MARKDOWN EDITOR (CodeMirror 6, CodeMirror 5 & TinyMCE) ENGINE
+// =================================================================
+export function buildEditorCss(options: StyleOptions): string {
+  const selectedTheme = resolveTheme(options);
+  const { fontImport, resolvedFont, resolvedCodeFont } = resolveFonts(options);
+  const cssVariables = buildCssVariables(selectedTheme);
+
+  let dirCss = '';
+  if (options.direction === 'rtl') {
+    dirCss = `
+      .cm-content, .CodeMirror-lines, body#tinymce {
+        direction: rtl !important;
+        text-align: right !important;
+      }
+    `;
+  } else if (options.direction === 'auto') {
+    dirCss = `
+      .cm-content, .CodeMirror-lines, body#tinymce {
+        unicode-bidi: plaintext !important;
+        text-align: start !important;
+      }
+    `;
+  } else {
+    dirCss = `
+      .cm-content, .CodeMirror-lines, body#tinymce {
+        direction: ltr !important;
+        text-align: left !important;
+      }
+    `;
+  }
+
+  return `
+${fontImport}
+${cssVariables}
+
+/* Outer editor container & scroller get the theme background */
+html body div.cm-editor,
+html body div.cm-editor .cm-scroller,
+html body div.CodeMirror,
+html body .r-markdown-editor {
+  background-color: var(--od-bg) !important;
+  color: var(--od-fg) !important;
+  font-family: ${resolvedFont} !important;
+}
+
+/* Content and lines MUST remain transparent so CodeMirror's selection layer is visible */
+.cm-content,
+.cm-line,
+.CodeMirror-lines,
+.CodeMirror-sizer {
+  background-color: transparent !important;
+}
+
+.cm-content, .CodeMirror-lines {
+  font-size: ${options.fontSize} !important;
+  line-height: ${options.lineHeight} !important;
+  caret-color: var(--od-link) !important;
+}
+
+${dirCss}
+
+/* Gutters & Line Numbers */
+.cm-gutters, .CodeMirror-gutters {
+  background-color: var(--od-bg-alt) !important;
+  color: var(--od-comment) !important;
+  border-right: 1px solid var(--od-border) !important;
+}
+.cm-activeLineGutter {
+  background-color: var(--od-bg-alt) !important;
+  color: var(--od-h2) !important;
+  font-weight: bold !important;
+}
+.cm-activeLine, .CodeMirror-activeline-background {
+  background-color: rgba(127, 127, 127, 0.08) !important;
+}
+
+/* Cursor & Selection (Fully unmasked for CodeMirror 6 and CodeMirror 5) */
+.CodeMirror-cursor,
+.cm-cursor,
+.cm-dropCursor {
+  border-left: 2px solid var(--od-link) !important;
+  border-left-color: var(--od-link) !important;
+}
+.cm-lineNumbers .cm-gutterElement {
+  color: var(--od-comment) !important;
+}
+.cm-selectionBackground,
+.cm-editor .cm-selectionLayer .cm-selectionBackground,
+.cm-content ::selection,
+.cm-line ::selection,
+.CodeMirror-selected,
+.CodeMirror-focused .CodeMirror-selected,
+::selection {
+  background-color: var(--od-selection) !important;
+}
+
+/* Syntax Highlighting in Markdown Editor */
+.cm-header-1, .tok-heading-1 { color: var(--od-h1) !important; font-weight: 700 !important; }
+.cm-header-2, .tok-heading-2 { color: var(--od-h2) !important; font-weight: 700 !important; }
+.cm-header-3, .tok-heading-3 { color: var(--od-h3) !important; font-weight: 600 !important; }
+.cm-header-4, .tok-heading-4 { color: var(--od-h4) !important; font-weight: 600 !important; }
+.cm-header-5, .tok-heading-5 { color: var(--od-h5) !important; }
+.cm-header-6, .tok-heading-6 { color: var(--od-h6) !important; }
+
+.cm-link, .tok-link { color: var(--od-link) !important; text-decoration: underline !important; }
+.cm-url, .tok-url { color: var(--od-link-hover) !important; }
+.cm-strong, .tok-strong { font-weight: bold !important; color: var(--od-fg) !important; }
+.cm-em, .tok-emphasis { font-style: italic !important; }
+.cm-comment, .tok-comment { color: var(--od-comment) !important; }
+.cm-quote, .tok-quote { color: var(--od-comment) !important; font-style: italic !important; }
+
+.tok-monospace, .cm-inline-code, .cm-variable-2 {
+  font-family: ${resolvedCodeFont} !important;
+  background-color: var(--od-code-bg) !important;
+  color: var(--od-code-fg) !important;
+  border-radius: 3px !important;
+}
+
+/* TinyMCE (Rich Text Editor) Shell & Toolbar Theming */
+.tox-tinymce {
+  border: 1px solid var(--od-border) !important;
+  background-color: var(--od-bg) !important;
+}
+.tox .tox-toolbar,
+.tox .tox-toolbar__primary,
+.tox .tox-toolbar__overflow {
+  background-color: var(--od-bg-alt) !important;
+  border-bottom: none !important;
+}
+.tox .tox-tbtn {
+  color: var(--od-fg) !important;
+}
+.tox .tox-tbtn:hover {
+  background-color: var(--od-selection) !important;
+}
+.tox .tox-tbtn svg {
+  fill: var(--od-fg) !important;
+}
+`;
+
+// =================================================================
+// 2. APPLICATION SHELL (DESKTOP UI) THEMING ENGINE
 // =================================================================
 export function buildChromeCss(options: StyleOptions): string {
   const selectedTheme = resolveTheme(options);
