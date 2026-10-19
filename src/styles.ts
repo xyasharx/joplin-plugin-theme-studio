@@ -16,6 +16,8 @@ export interface StyleOptions {
   pdfPageSize?: string;
   pdfPageMargin?: string;
   customPdfMargin?: string;
+  customCss?: string;
+}
 }
 
 /**
@@ -58,6 +60,84 @@ function compactCss(css: string): string {
     .replace(/\s*([{};,>])\s*/g, '$1')
     .replace(/;}/g, '}')
     .trim();
+}
+
+// ---------------------------------------------------------------------------
+// Code-token colours.
+//
+// The palette hues are designed for headings, which are large and bold. Used
+// as syntax colours on a code block, several of them fall below 3:1 contrast
+// (gruvbox-light numbers reach 1.97:1 against their own code background), so
+// each value is nudged towards black or white until it stays readable. The
+// adjustment is small in dark themes and only touches colours that need it.
+// ---------------------------------------------------------------------------
+function hexToRgb(hex: string): [number, number, number] | null {
+  const clean = (hex || '').replace('#', '');
+  if (clean.length !== 6 || !/^[0-9a-fA-F]{6}$/.test(clean)) return null;
+  return [0, 2, 4].map((i) => parseInt(clean.slice(i, i + 2), 16)) as [number, number, number];
+}
+
+function relativeLuminance(rgb: [number, number, number]): number {
+  const [r, g, b] = rgb.map((channel) => {
+    const c = channel / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function contrastRatio(a: [number, number, number], b: [number, number, number]): number {
+  const [hi, lo] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+function mixChannel(from: number, to: number, amount: number): number {
+  return Math.round(from + (to - from) * amount);
+}
+
+function toHex(rgb: [number, number, number]): string {
+  return '#' + rgb.map((c) => c.toString(16).padStart(2, '0')).join('');
+}
+
+/** Returns `color` adjusted until it reaches `minRatio` against `background`. */
+function ensureReadable(color: string, background: string, minRatio = 3): string {
+  const fg = hexToRgb(color);
+  const bg = hexToRgb(background);
+  if (!fg || !bg || contrastRatio(fg, bg) >= minRatio) return color;
+
+  const lighten = relativeLuminance(bg) < 0.5;
+  const target: [number, number, number] = lighten ? [255, 255, 255] : [0, 0, 0];
+
+  let best = color;
+  for (let step = 1; step <= 20; step++) {
+    const mixed = fg.map((c, i) => mixChannel(c, target[i], step * 0.05)) as [number, number, number];
+    best = toHex(mixed);
+    if (contrastRatio(mixed, bg) >= minRatio) break;
+  }
+  return best;
+}
+
+/** Emits the resolved syntax colours for the current theme. */
+function buildTokenVariables(theme: ThemePalette): string {
+  const v = theme.variables;
+  const bg = v['--od-pre-bg'] || v['--od-bg'];
+  const map: Record<string, string> = {
+    '--od-tok-keyword': v['--od-h4'],
+    '--od-tok-string': v['--od-h3'],
+    '--od-tok-number': v['--od-h6'],
+    '--od-tok-function': v['--od-h2'],
+    '--od-tok-type': v['--od-h5'],
+    '--od-tok-tag': v['--od-h1'],
+    '--od-tok-comment': v['--od-comment'],
+    '--od-tok-fg': v['--od-fg'],
+    '--od-tok-accent': v['--od-link'],
+  };
+
+  let css = ':root {\n';
+  for (const [key, value] of Object.entries(map)) {
+    css += `  ${key}: ${ensureReadable(value, bg)};\n`;
+  }
+  css += '}\n';
+  return css;
 }
 
 function resolveTheme(options: StyleOptions): ThemePalette {
@@ -712,6 +792,7 @@ export function buildThemeCss(options: StyleOptions, target: CssTarget = 'viewer
   const S = isViewer ? '#rendered-md' : 'body#tinymce';
 
   const selectedTheme = resolveTheme(options);
+  const tokenVariables = buildTokenVariables(selectedTheme);
   const { fontImport, resolvedFont, resolvedCodeFont } = resolveFonts(options);
   const headingSizes = resolveHeadingSizes(options);
   const cssVariables = buildCssVariables(selectedTheme, `  --mermaid-font-family: ${resolvedFont} !important;\n`);
@@ -1063,6 +1144,112 @@ ${PRE} code {
   min-width: 100% !important;
 }
 
+/* Syntax highlighting tokens. Joplin renders fenced blocks as
+   <pre class="hljs"><code><span class="hljs-keyword"> and colours them with a
+   bundled Atom One stylesheet chosen from Joplin's own theme, so without the
+   rules below every palette would show Atom One syntax colours. The palette
+   roles map onto the standard highlighting semantics. */
+${S} pre.hljs,
+${S} .hljs {
+  background-color: var(--od-pre-bg) !important;
+  color: var(--od-tok-fg) !important;
+}
+
+${S} .hljs-comment,
+${S} .hljs-quote,
+${S} .hljs-doctag {
+  color: var(--od-tok-comment) !important;
+  font-style: italic !important;
+}
+
+${S} .hljs-keyword,
+${S} .hljs-class,
+${S} .hljs-selector-tag,
+${S} .hljs-template-tag,
+${S} .hljs-meta .hljs-keyword {
+  color: var(--od-tok-keyword) !important;
+}
+
+${S} .hljs-string,
+${S} .hljs-regexp,
+${S} .hljs-addition,
+${S} .hljs-meta .hljs-string {
+  color: var(--od-tok-string) !important;
+}
+
+${S} .hljs-number,
+${S} .hljs-literal,
+${S} .hljs-symbol,
+${S} .hljs-bullet,
+${S} .hljs-link {
+  color: var(--od-tok-number) !important;
+}
+
+${S} .hljs-title,
+${S} .hljs-section,
+${S} .hljs-name,
+${S} .hljs-function {
+  color: var(--od-tok-function) !important;
+}
+
+${S} .hljs-type,
+${S} .hljs-built_in,
+${S} .hljs-constructor,
+${S} .hljs-typing,
+${S} .hljs-module,
+${S} .hljs-module-access,
+${S} .hljs-class .hljs-title,
+${S} .hljs-title.class_ {
+  color: var(--od-tok-type) !important;
+}
+
+${S} .hljs-attr,
+${S} .hljs-attribute,
+${S} .hljs-variable,
+${S} .hljs-template-variable,
+${S} .hljs-property {
+  color: var(--od-tok-tag) !important;
+}
+
+${S} .hljs-tag,
+${S} .hljs-selector-id,
+${S} .hljs-selector-class,
+${S} .hljs-selector-attr,
+${S} .hljs-selector-pseudo {
+  color: var(--od-tok-tag) !important;
+}
+
+${S} .hljs-meta,
+${S} .hljs-params {
+  color: var(--od-tok-comment) !important;
+}
+
+${S} .hljs-subst,
+${S} .hljs-operator {
+  color: var(--od-tok-fg) !important;
+}
+
+${S} .hljs-pattern-match {
+  color: var(--od-tok-number) !important;
+}
+
+${S} .hljs-formula {
+  color: var(--od-tok-accent) !important;
+}
+
+${S} .hljs-deletion {
+  color: var(--od-tok-tag) !important;
+  text-decoration: line-through !important;
+}
+
+${S} .hljs-emphasis {
+  font-style: italic !important;
+}
+
+${S} .hljs-strong {
+  font-weight: 700 !important;
+}
+
 ${S} :is(p, li) code {
   direction: ltr !important;
   display: inline-block !important;
@@ -1369,5 +1556,13 @@ ${S} .footnotes {
 ::-webkit-scrollbar-thumb:hover { background: var(--od-scrollbar-hover) !important; }
 `;
 
-  return compactCss(`${fontImport}\n${cssVariables}\n${dirRules}\n${coreStyles}${printStyles}${scrollbarStyles}`);
+  // User CSS is appended AFTER compaction so comments, quoted strings and
+  // whitespace inside it are preserved exactly as typed. Style tags are stripped
+  // because the result is injected inside a <style> element: a stray closing tag
+  // would end the block and spill the rest of the stylesheet into the note body.
+  const customCss = (options.customCss || '').replace(/<\/?style[^>]*>/gi, '').trim();
+
+  const baseCss = compactCss(`${fontImport}\n${cssVariables}${tokenVariables}\n${dirRules}\n${coreStyles}${printStyles}${scrollbarStyles}`);
+
+  return customCss ? `${baseCss}\n/* User custom CSS */\n${customCss}` : baseCss;
 }
