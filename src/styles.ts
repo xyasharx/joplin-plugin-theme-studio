@@ -189,154 +189,19 @@ function resolveFonts(options: StyleOptions) {
 // =================================================================
 // 1. MARKDOWN EDITOR (CodeMirror 6, CodeMirror 5 & TinyMCE) ENGINE
 // =================================================================
-export function buildEditorCss(options: StyleOptions): string {
-  const selectedTheme = resolveTheme(options);
-  const { fontImport, resolvedFont, resolvedCodeFont } = resolveFonts(options);
-  const cssVariables = buildCssVariables(selectedTheme);
-
-  let dirCss = '';
-  if (options.direction === 'rtl') {
-    dirCss = `
-      .cm-content, .CodeMirror-lines, body#tinymce {
-        direction: rtl !important;
-        text-align: right !important;
-      }
-    `;
-  } else if (options.direction === 'auto') {
-    dirCss = `
-      .cm-content, .CodeMirror-lines, body#tinymce {
-        unicode-bidi: plaintext !important;
-        text-align: start !important;
-      }
-    `;
-  } else {
-    dirCss = `
-      .cm-content, .CodeMirror-lines, body#tinymce {
-        direction: ltr !important;
-        text-align: left !important;
-      }
-    `;
-  }
-
-  return `
-${fontImport}
-${cssVariables}
-
-/* Outer editor container & scroller get the theme background */
-html body div.cm-editor,
-html body div.cm-editor .cm-scroller,
-html body div.CodeMirror,
-html body .r-markdown-editor {
-  background-color: var(--od-bg) !important;
-  color: var(--od-fg) !important;
-  font-family: ${resolvedFont} !important;
-}
-
-/* Content and lines MUST remain transparent so CodeMirror's selection layer is visible */
-.cm-content,
-.cm-line,
-.CodeMirror-lines,
-.CodeMirror-sizer {
-  background-color: transparent !important;
-}
-
-.cm-content, .CodeMirror-lines {
-  font-size: ${options.fontSize} !important;
-  line-height: ${options.lineHeight} !important;
-  caret-color: var(--od-link) !important;
-}
-
-${dirCss}
-
-/* Gutters & Line Numbers */
-.cm-gutters, .CodeMirror-gutters {
-  background-color: var(--od-bg-alt) !important;
-  color: var(--od-comment) !important;
-  border-right: 1px solid var(--od-border) !important;
-}
-.cm-activeLineGutter {
-  background-color: var(--od-bg-alt) !important;
-  color: var(--od-h2) !important;
-  font-weight: bold !important;
-}
-.cm-activeLine, .CodeMirror-activeline-background {
-  background-color: rgba(127, 127, 127, 0.08) !important;
-}
-
-/* Cursor & Selection (Fully unmasked for CodeMirror 6 and CodeMirror 5) */
-.CodeMirror-cursor,
-.cm-cursor,
-.cm-dropCursor {
-  border-left: 2px solid var(--od-link) !important;
-  border-left-color: var(--od-link) !important;
-}
-.cm-lineNumbers .cm-gutterElement {
-  color: var(--od-comment) !important;
-}
-.cm-selectionBackground,
-.cm-editor .cm-selectionLayer .cm-selectionBackground,
-.cm-content ::selection,
-.cm-line ::selection,
-.CodeMirror-selected,
-.CodeMirror-focused .CodeMirror-selected,
-::selection {
-  background-color: var(--od-selection) !important;
-}
-
-/* Syntax Highlighting in Markdown Editor */
-.cm-header-1, .tok-heading-1 { color: var(--od-h1) !important; font-weight: 700 !important; }
-.cm-header-2, .tok-heading-2 { color: var(--od-h2) !important; font-weight: 700 !important; }
-.cm-header-3, .tok-heading-3 { color: var(--od-h3) !important; font-weight: 600 !important; }
-.cm-header-4, .tok-heading-4 { color: var(--od-h4) !important; font-weight: 600 !important; }
-.cm-header-5, .tok-heading-5 { color: var(--od-h5) !important; }
-.cm-header-6, .tok-heading-6 { color: var(--od-h6) !important; }
-
-.cm-link, .tok-link { color: var(--od-link) !important; text-decoration: underline !important; }
-.cm-url, .tok-url { color: var(--od-link-hover) !important; }
-.cm-strong, .tok-strong { font-weight: bold !important; color: var(--od-fg) !important; }
-.cm-em, .tok-emphasis { font-style: italic !important; }
-.cm-comment, .tok-comment { color: var(--od-comment) !important; }
-.cm-quote, .tok-quote { color: var(--od-comment) !important; font-style: italic !important; }
-
-.tok-monospace, .cm-inline-code, .cm-variable-2 {
-  font-family: ${resolvedCodeFont} !important;
-  background-color: var(--od-code-bg) !important;
-  color: var(--od-code-fg) !important;
-  border-radius: 3px !important;
-}
-
-/* TinyMCE (Rich Text Editor) Shell & Toolbar Theming */
-.tox-tinymce {
-  border: 1px solid var(--od-border) !important;
-  background-color: var(--od-bg) !important;
-}
-.tox .tox-toolbar,
-.tox .tox-toolbar__primary,
-.tox .tox-toolbar__overflow {
-  background-color: var(--od-bg-alt) !important;
-  border-bottom: none !important;
-}
-.tox .tox-tbtn {
-  color: var(--od-fg) !important;
-}
-.tox .tox-tbtn:hover {
-  background-color: var(--od-selection) !important;
-}
-.tox .tox-tbtn svg {
-  fill: var(--od-fg) !important;
-}
-`;
-}
-
-// =================================================================
-// 2. APPLICATION SHELL (DESKTOP UI) THEMING ENGINE
-// =================================================================
 export function buildChromeCss(options: StyleOptions): string {
   const selectedTheme = resolveTheme(options);
   const { fontImport, resolvedFont } = resolveFonts(options);
   const cssVariables = buildCssVariables(selectedTheme);
 
-  // BiDi synchronization: Protects UI toolbars, headers, and tree indentation
+  // ------------------------------------------------------------------
+  // Direction rules.
+  // Target only hooks that exist in every Joplin 3.x release:
+  //   .sidebar, .list-item-container, .note-list, .note-list-item-wrapper,
+  //   input.title-input.
+  // ------------------------------------------------------------------
+  const noteRow = '.note-list .note-list-item-wrapper[aria-selected="true"]';
+
   let shellDirRules = '';
   if (options.direction === 'rtl') {
     shellDirRules = `
@@ -346,40 +211,27 @@ export function buildChromeCss(options: StyleOptions): string {
         text-align: right !important;
       }
 
-      /* Note List item titles align naturally using Unicode BiDi */
-      .note-list .title,
-      .note-list-item-title,
-      .note-list span,
-      .note-list div {
+      /* Row labels align per paragraph; layout order is never touched, so
+         tree indentation and flex order stay intact. */
+      .sidebar .title,
+      .sidebar .tag-label,
+      .note-list .title {
         unicode-bidi: plaintext !important;
         text-align: start !important;
       }
 
-      /* Active Note Indicator flips to right border in RTL */
-      div.rli-noteList [aria-selected="true"],
-      div.rli-noteList .selected,
-      div.note-list [aria-selected="true"],
-      div.note-list .selected {
+      /* Active note indicator flips to the right edge */
+      ${noteRow} {
         border-right: 4px solid var(--od-h2) !important;
         border-left: none !important;
-      }
-
-      /* Sidebar titles use BiDi without breaking tree indentation or flex order */
-      .side-bar .title,
-      .side-bar span.title,
-      .folders a span:not(.note-count-label):not(.icon),
-      .tags a span:not(.note-count-label):not(.icon) {
-        unicode-bidi: plaintext !important;
-        text-align: start !important;
       }
     `;
   } else if (options.direction === 'auto') {
     shellDirRules = `
       input.title-input,
-      .note-list .title,
-      .note-list-item-title,
-      .side-bar .title,
-      .side-bar span.title {
+      .sidebar .title,
+      .sidebar .tag-label,
+      .note-list .title {
         unicode-bidi: plaintext !important;
         text-align: start !important;
       }
@@ -391,10 +243,8 @@ export function buildChromeCss(options: StyleOptions): string {
         text-align: left !important;
       }
 
-      div.rli-noteList [aria-selected="true"],
-      div.rli-noteList .selected,
-      div.note-list [aria-selected="true"],
-      div.note-list .selected {
+      /* Active note indicator on the left edge */
+      ${noteRow} {
         border-left: 4px solid var(--od-h2) !important;
         border-right: none !important;
       }
@@ -407,285 +257,212 @@ ${cssVariables}
 ${shellDirRules}
 
 /* =================================================================
-   UNIFIED DESKTOP SHELL CASCADE (OVERRIDING JOPLIN CORE DARK/LIGHT)
+   DESKTOP SHELL CASCADE
+   Every selector below is anchored on a class that exists in Joplin 3.x
+   (verified against v3.0.15, v3.3.13 and v3.7.14). The 2.x-era names
+   (.side-bar, .r-panel, .synchronize-button, .note-list-top-bar,
+   .rli-splitter, .updated-feature-banner, .sync-status-box, .folders,
+   .tags, div[toggleblock]) do not exist in any 3.x build and were
+   removed, as were the universal "container *" rules.
    ================================================================= */
 
-/* --- 1. Resizer Splitters & Root Container --- */
+/* --- 1. Window shell & resize handles --- */
+.resizableLayoutItem {
+  background-color: var(--od-bg) !important;
+  color: var(--od-fg) !important;
+}
+
+/* Resize handles carry no class - Joplin only sets an inline cursor,
+   so this attribute match is the only stable hook that exists. */
 div[style*="col-resize"],
-div[style*="row-resize"],
-div[style*="cursor: col-resize"],
-div[style*="cursor: row-resize"],
-.rli-splitter,
-.splitter,
-div[class*="splitter"],
-div[class*="resizer"],
-div[class*="divider"] {
+div[style*="row-resize"] {
   background-color: var(--od-border) !important;
-  background: var(--od-border) !important;
   border-color: var(--od-border) !important;
   opacity: 0.8 !important;
 }
 
-.rli-root,
-#joplin-plugin-content,
-div[class*="rli-"] {
-  background-color: var(--od-bg) !important;
-  color: var(--od-fg) !important;
-}
-
-/* --- 2. Primary Left Sidebar --- */
-.side-bar,
-.r-sidebar,
+/* --- 2. Sidebar --- */
 .rli-sideBar,
-div[toggleblock="1"] {
+.sidebar {
   background-color: var(--od-bg-alt) !important;
-  background: var(--od-bg-alt) !important;
   color: var(--od-fg) !important;
   font-family: ${resolvedFont} !important;
 }
 
-.side-bar *,
-.r-sidebar *,
-.rli-sideBar *,
-div[toggleblock="1"] *,
-.folders *,
-.tags *,
-a.list-item,
-a.list-item *,
-.list-item-container * {
-  color: var(--od-fg) !important;
-  border-color: var(--od-fg) !important;
-}
-
-.side-bar svg,
-.side-bar path,
-.side-bar i,
-.r-sidebar svg,
-.r-sidebar path,
-.rli-sideBar svg,
-.rli-sideBar path {
-  fill: var(--od-fg) !important;
-  stroke: var(--od-fg) !important;
-  color: var(--od-fg) !important;
-}
-
-.side-bar .list-item-container:hover,
-.side-bar .list-item:hover,
-.side-bar a:hover {
-  background-color: var(--od-selection) !important;
-}
-
-/* Active Selected Notebook Item (Overrides Inline rgb(0, 95, 184)) */
-.side-bar .list-item-container.selected,
-.side-bar .list-item.selected,
-.side-bar a.selected,
-.side-bar .selected,
-.side-bar div[class*="selected"],
-.rli-sideBar .selected,
-.rli-sideBar div[class*="selected"],
-.folders .selected,
-.folders div[class*="selected"],
-.tags .selected {
-  background-color: var(--od-selection) !important;
-  background: var(--od-selection) !important;
-  color: var(--od-link) !important;
-  font-weight: 700 !important;
-}
-
-.side-bar .selected *,
-.side-bar div[class*="selected"] *,
-.rli-sideBar .selected *,
-.rli-sideBar div[class*="selected"] *,
-.folders .selected * {
-  color: var(--od-link) !important;
-}
-
-.side-bar .header,
-.side-bar .header span,
-.side-bar div[style*="font-weight: bold"],
-.side-bar .section-header {
-  color: var(--od-comment) !important;
-  font-size: 0.85em !important;
-  letter-spacing: 0.5px !important;
-  opacity: 0.85 !important;
-}
-
-.side-bar .item-count,
-.folders span[style*="opacity"] {
-  color: var(--od-comment) !important;
-  opacity: 0.8 !important;
-}
-
-/* Ensure clean spacing between folder icons, emojis, and titles without breaking tree indentation */
-.side-bar .icon,
-.side-bar span.icon,
-.side-bar svg.icon,
-.side-bar span[role="img"],
-.folders a span[role="img"] {
-  margin-left: 6px !important;
-  margin-right: 6px !important;
-  display: inline-block !important;
-}
-
-/* --- 2. Bottom Left: Synchronize Panel --- */
-.rli-sideBar > div:last-child,
-.rli-sideBar > div:nth-child(2),
-.rli-sideBar div[style*="border-top"],
-.rli-sideBar div[style*="background-color"],
-.rli-sideBar > div > div:last-child,
-.side-bar > div:last-child,
-div:has(> .synchronize-button),
-div:has(.synchronize-button),
-div:has(> button.synchronize-button),
-div:has(button[title*="Sync"]),
-div:has(button[title*="Synchronize"]),
-.synchronize-button,
-.sync-status-box,
-div.sync-report,
-div[class*="sync"],
-div[class*="Sync"] {
+.sidebar-header-container {
   background-color: var(--od-bg-alt) !important;
-  background: var(--od-bg-alt) !important;
-  border-top: 1px solid var(--od-border) !important;
-}
-
-.rli-sideBar > div:last-child *,
-.rli-sideBar > div:nth-child(2) *,
-div:has(.synchronize-button) *,
-.synchronize-button *,
-.sync-status-box *,
-div.sync-report * {
-  background-color: transparent !important;
-  color: var(--od-comment) !important;
-}
-
-.rli-sideBar > div:last-child button,
-.rli-sideBar > div:nth-child(2) button,
-div:has(.synchronize-button) button,
-.synchronize-button button,
-.sync-status-box button,
-button.synchronize-button,
-button[title*="Sync"],
-button[title*="Synchronize"] {
-  background-color: var(--od-bg) !important;
-  background: var(--od-bg) !important;
   color: var(--od-fg) !important;
-  border: 1px solid var(--od-border) !important;
-  border-color: var(--od-border) !important;
-  box-shadow: none !important;
-  outline: none !important;
-  border-radius: 4px !important;
-  font-weight: 600 !important;
-  padding: 6px 12px !important;
-}
-
-.rli-sideBar > div:last-child button:hover,
-.synchronize-button button:hover,
-.synchronize-button button:focus {
-  background-color: var(--od-selection) !important;
-  border-color: var(--od-link) !important;
-  color: var(--od-link) !important;
-  box-shadow: none !important;
-  outline: none !important;
-}
-
-.synchronize-button svg,
-.synchronize-button path,
-.synchronize-button i,
-div:has(.synchronize-button) svg,
-div:has(.synchronize-button) path {
-  fill: var(--od-fg) !important;
-  color: var(--od-fg) !important;
-}
-
-/* --- 3. Note List Panel & Active Item Selection --- */
-.note-list,
-.r-note-list,
-.item-list,
-div.rli-noteList,
-div.rli-noteList > div {
-  background-color: var(--od-bg) !important;
-  background: var(--od-bg) !important;
-  border-right: 1px solid var(--od-border) !important;
-  border-left: 1px solid var(--od-border) !important;
-  font-family: ${resolvedFont} !important;
-}
-
-.note-list .list-item-container,
-.note-list .list-item,
-.note-list-item,
-div.rli-noteList .list-item-container {
-  background-color: var(--od-bg) !important;
   border-bottom: 1px solid var(--od-border) !important;
 }
 
-.note-list .list-item-container *,
-.note-list .title,
-.note-list-item-title,
-.note-list span {
+.sidebar .list-item-container,
+.sidebar .list-item,
+.sidebar button,
+.sidebar a {
   color: var(--od-fg) !important;
+  text-decoration: none !important;
 }
 
-.note-list .list-item-container:hover,
-.note-list .list-item:hover,
-.note-list a:hover {
+.sidebar .list-item-container:hover {
   background-color: var(--od-selection) !important;
 }
 
-/* Active Selected Note (Overrides Inline Dark Styles) */
-div.rli-noteList [aria-selected="true"],
-div.rli-noteList .selected,
-div.rli-noteList div[class*="selected"],
-div.rli-noteList .list-item-container.selected,
-div.rli-noteList .note-list-item.selected,
-div.note-list [aria-selected="true"],
-div.note-list .selected,
-div.note-list div[class*="selected"],
-div.note-list .list-item-container.selected,
-div.note-list .note-list-item.selected {
+/* Active notebook / tag (class is "selected" on both FolderItem and TagItem) */
+.sidebar .list-item-container.selected,
+.sidebar .list-item-container.-selected {
   background-color: var(--od-selection) !important;
-  background: var(--od-selection) !important;
-}
-
-div.rli-noteList [aria-selected="true"] *,
-div.rli-noteList .selected *,
-div.note-list [aria-selected="true"] *,
-div.note-list .selected * {
   color: var(--od-link) !important;
   font-weight: 700 !important;
 }
 
-/* --- 4. Top Left: Note List Header Bar, Buttons & Search (Green Box) --- */
-div.rli-noteList > div > div > div:first-child,
-div.rli-noteList .note-list-top-bar,
-.note-list-top-bar,
-.note-list > div:first-child,
-.note-list .header,
-.search-bar,
-div.new-note-todo-buttons,
-div:has(> .new-note-button),
-div:has(> button.new-note-button) {
-  background-color: var(--od-bg-alt) !important;
-  background: var(--od-bg-alt) !important;
-  border-bottom: none !important;
+.sidebar .list-item-container.selected .title,
+.sidebar .list-item-container.-selected .title,
+.sidebar .list-item-container.selected .tag-label,
+.sidebar .list-item-container.-selected .tag-label {
+  color: var(--od-link) !important;
 }
 
-/* New note & New to-do Buttons: Dynamic contrast against --od-link */
-button.new-note-button,
-button.new-todo-button,
-div.rli-noteList button.new-note-button,
-div.rli-noteList button.new-todo-button,
-div.new-note-todo-buttons button,
-div.header a.button,
-div.header button,
-.note-list .header button,
-.note-list-top-bar button:not(.sort-order-reverse-button),
-a.button[title="New note"],
-a.button[title="New to-do"],
-a[title="New note"],
-a[title="New to-do"] {
+.sidebar .title,
+.sidebar .tag-label,
+.sidebar .all-notes {
+  color: var(--od-fg) !important;
+}
+
+.sidebar .note-count-label {
+  color: var(--od-comment) !important;
+  opacity: 0.8 !important;
+}
+
+.sidebar .sidebar-expand-link {
+  color: var(--od-comment) !important;
+}
+
+/* Flat controls: Joplin's sidebar buttons carry no background of their own */
+.sidebar button {
+  background-color: transparent !important;
+}
+
+.sidebar svg,
+.sidebar path,
+.sidebar .icon {
+  fill: var(--od-fg) !important;
+  color: var(--od-fg) !important;
+}
+
+/* Selected row keeps the accent colour for its icons too */
+.sidebar .list-item-container.selected svg,
+.sidebar .list-item-container.selected path,
+.sidebar .list-item-container.-selected svg,
+.sidebar .list-item-container.-selected path {
+  fill: var(--od-link) !important;
+  color: var(--od-link) !important;
+}
+
+/* --- 3. Sync area (Joplin 3.3+: stable classes; older builds keep the
+       stock look rather than relying on :has()) --- */
+.sidebar-sync-button {
+  color: var(--od-fg) !important;
+  background-color: transparent !important;
+}
+
+.sidebar-sync-button:hover {
+  color: var(--od-link) !important;
+}
+
+.sidebar-sync-button svg,
+.sidebar-sync-button path {
+  fill: currentColor !important;
+  color: inherit !important;
+}
+
+.sidebar-sync-button.-error,
+.sidebar-sync-button.-error svg {
+  color: var(--od-h2) !important;
+}
+
+#sync-report {
+  background-color: var(--od-bg-alt) !important;
+  color: var(--od-fg) !important;
+  border-top: 1px solid var(--od-border) !important;
+}
+
+.sync-report-toggle {
+  color: var(--od-comment) !important;
+}
+
+/* --- 4. Note list --- */
+.note-list,
+.note-list .item-list,
+.item-list {
+  background-color: var(--od-bg) !important;
+  color: var(--od-fg) !important;
+  font-family: ${resolvedFont} !important;
+}
+
+.note-list {
+  border-right: 1px solid var(--od-border) !important;
+  border-left: 1px solid var(--od-border) !important;
+}
+
+.note-list .note-list-item-wrapper {
+  border-color: var(--od-border) !important;
+}
+
+.note-list-item,
+.shared-note-list-item {
+  background-color: var(--od-bg) !important;
+  color: var(--od-fg) !important;
+  border-color: var(--od-border) !important;
+}
+
+.note-list .title {
+  color: var(--od-fg) !important;
+}
+
+.note-list-item:hover,
+.shared-note-list-item:hover {
+  background-color: var(--od-selection) !important;
+}
+
+/* Active note. The wrapper carries aria-selected; the visible surface is
+   .note-list-item / .shared-note-list-item, so both are styled. */
+.note-list .note-list-item-wrapper[aria-selected="true"] {
+  background-color: var(--od-selection) !important;
+}
+
+.note-list .note-list-item-wrapper[aria-selected="true"] .note-list-item,
+.note-list .note-list-item-wrapper[aria-selected="true"] .shared-note-list-item {
+  background-color: var(--od-selection) !important;
+}
+
+.note-list .note-list-item-wrapper[aria-selected="true"] .title {
+  color: var(--od-link) !important;
+  font-weight: 700 !important;
+}
+
+.note-list .emptylist {
+  background-color: var(--od-bg) !important;
+  color: var(--od-comment) !important;
+}
+
+/* --- 5. Note list header, buttons and search --- */
+.note-list-header {
+  background-color: var(--od-bg-alt) !important;
+  color: var(--od-fg) !important;
+  border-bottom: 1px solid var(--od-border) !important;
+}
+
+.note-list-header .title {
+  color: var(--od-fg) !important;
+}
+
+.new-note-todo-buttons {
+  background-color: var(--od-bg-alt) !important;
+}
+
+.new-note-button,
+.new-todo-button {
   background-color: var(--od-link) !important;
-  background: var(--od-link) !important;
   color: var(--od-bg) !important;
   border: none !important;
   border-radius: 4px !important;
@@ -693,79 +470,58 @@ a[title="New to-do"] {
   box-shadow: none !important;
 }
 
-button.new-note-button *,
-button.new-todo-button *,
-div.new-note-todo-buttons button * {
-  color: var(--od-bg) !important;
-  fill: var(--od-bg) !important;
-}
-
-button.new-note-button:hover,
-button.new-todo-button:hover,
-div.rli-noteList button.new-note-button:hover,
-div.rli-noteList button.new-todo-button:hover,
-div.new-note-todo-buttons button:hover {
+.new-note-button:hover,
+.new-todo-button:hover {
   background-color: var(--od-link-hover) !important;
-  background: var(--od-link-hover) !important;
 }
 
-/* Search bar input */
-div.rli-noteList input,
-div.rli-noteList input[type="search"],
-.note-list-top-bar input,
+.new-note-button svg,
+.new-note-button path,
+.new-note-button .icon,
+.new-todo-button svg,
+.new-todo-button path,
+.new-todo-button .icon {
+  fill: var(--od-bg) !important;
+  color: var(--od-bg) !important;
+}
+
 .note-list input[type="search"],
 .search-bar input,
-input[type="search"] {
+.search-and-sort input {
   background-color: var(--od-bg) !important;
   color: var(--od-fg) !important;
   border: 1px solid var(--od-border) !important;
   border-radius: 4px !important;
 }
 
-/* Sort, Reverse & Calendar Buttons in Search Row */
-button.sort-order-reverse-button,
-div.rli-noteList button.sort-order-reverse-button,
-div.rli-noteList button:not(.new-note-button):not(.new-todo-button),
-.note-list-top-bar button.sort-order-reverse-button {
-  background-color: var(--od-bg) !important;
-  background: var(--od-bg) !important;
-  color: var(--od-fg) !important;
-  border: 1px solid var(--od-border) !important;
-  border-radius: 4px !important;
-}
-
-div.rli-noteList svg,
-div.rli-noteList path,
-.note-list-top-bar svg,
-.note-list-top-bar path,
 .search-bar svg,
-.search-bar path {
+.search-bar path,
+.search-and-sort svg,
+.search-and-sort path {
   fill: var(--od-fg) !important;
   color: var(--od-fg) !important;
 }
 
-/* --- 5. Top Right: Note Header & Unified Navbar (Blue Box) --- */
-.header,
-.r-header,
-.top-bar,
-.note-title-wrapper,
-div.note-title-wrapper {
+.sort-order-field-button,
+.sort-order-reverse-button {
+  background-color: var(--od-bg) !important;
+  color: var(--od-fg) !important;
+  border: 1px solid var(--od-border) !important;
+  border-radius: 4px !important;
+}
+
+/* --- 6. Note title bar --- */
+.note-title-wrapper {
   background-color: var(--od-bg-alt) !important;
-  background: var(--od-bg-alt) !important;
+  color: var(--od-fg) !important;
   border-bottom: 1px solid var(--od-border) !important;
-  border-top: none !important;
-  border-left: none !important;
-  border-right: none !important;
   box-sizing: border-box !important;
   min-height: 40px !important;
 }
 
-/* Seamless Title Input (Blends directly into the header bar without boxed borders) */
 input.title-input {
   background-color: transparent !important;
-  background: transparent !important;
   border: none !important;
-  border-bottom: none !important;
   color: var(--od-fg) !important;
   font-family: ${resolvedFont} !important;
   font-size: 1.2em !important;
@@ -781,183 +537,107 @@ input.title-input:focus {
   box-shadow: none !important;
 }
 
-/* Seamless Info Group (Eliminates disconnected borders and mismatched fills) */
-.note-title-info-group,
-div.note-title-info-group {
+.note-title-info-group {
   background-color: transparent !important;
-  background: transparent !important;
   border: none !important;
-  border-bottom: none !important;
-  border-left: none !important;
-  border-right: none !important;
   box-shadow: none !important;
 }
 
-.note-title-info-group *,
-.header span,
-.header div {
+.note-title-info-group,
+.note-title-info-group span,
+.updated-time-label {
   color: var(--od-fg) !important;
-  border-bottom: none !important;
 }
 
 .note-title-info-group svg,
-.note-title-info-group path,
-.header svg,
-.header path {
+.note-title-info-group path {
   fill: var(--od-fg) !important;
   color: var(--od-fg) !important;
 }
 
-.header button,
-.header a,
-.header .button,
-button.toolbar-button {
+.toolbar-button {
   background-color: transparent !important;
   color: var(--od-fg) !important;
   border: none !important;
 }
 
-.header button:hover,
-.header a:hover,
-button.toolbar-button:hover {
+.toolbar-button:hover {
   background-color: var(--od-selection) !important;
   border-radius: 4px !important;
 }
 
-/* --- 6. Markdown Editor Formatting Toolbar --- */
-.editor-toolbar,
-div.editor-toolbar,
-div[class*="editor-toolbar"],
-.r-editor-toolbar {
+/* --- 7. Markdown editor formatting toolbar --- */
+.editor-toolbar {
   background-color: var(--od-bg-alt) !important;
-  background: var(--od-bg-alt) !important;
   border-bottom: none !important;
 }
 
-.editor-toolbar *,
-.editor-toolbar div,
-.editor-toolbar button,
-.editor-toolbar a,
-.editor-toolbar span {
+.editor-toolbar .toolbar-button,
+.editor-toolbar .group {
   color: var(--od-fg) !important;
   background-color: transparent !important;
 }
 
 .editor-toolbar svg,
 .editor-toolbar path,
-.editor-toolbar .icon,
-.editor-toolbar [class*="icon"] {
+.editor-toolbar .icon {
   fill: var(--od-fg) !important;
   color: var(--od-fg) !important;
 }
 
-.editor-toolbar button:hover,
-.editor-toolbar a:hover {
-  background-color: var(--od-selection) !important;
-  border-radius: 4px !important;
-}
-
-/* --- 8. Bottom: Tag Bar & Notification Banners --- */
-.tag-bar,
-div.tag-bar,
-.tag-list,
-div[class*="tag"],
-div[class*="banner"],
-div.updated-feature-banner,
-div.alert,
-div.info-box,
-.rli-editor > div > div > div:has(.tag-bar),
-.rli-editor > div > div > div:has(div[class*="banner"]),
-.rli-editor > div > div > div:last-child {
+/* --- 8. Tag bar (status bar) and warning banners --- */
+.tag-bar {
   background-color: var(--od-bg-alt) !important;
-  background: var(--od-bg-alt) !important;
+  color: var(--od-fg) !important;
   border-top: 1px solid var(--od-border) !important;
-  color: var(--od-fg) !important;
-}
-
-.tag-bar *,
-div[class*="banner"] *,
-div.updated-feature-banner * {
-  color: var(--od-fg) !important;
 }
 
 .tag-bar svg,
 .tag-bar path {
   fill: var(--od-fg) !important;
-}
-
-.tag-bar input,
-.tag-bar .tag-input {
-  background-color: var(--od-bg) !important;
   color: var(--od-fg) !important;
-  border: 1px solid var(--od-border) !important;
 }
 
-.tag-bar span,
-.tag-list span,
-.tag-list .tag-item {
+.tag-list .tag-item,
+.tag-bar .tag-item {
   background-color: var(--od-selection) !important;
   color: var(--od-fg) !important;
   border-radius: 4px !important;
-  padding: 2px 6px !important;
 }
 
-div[class*="banner"] a,
-div[class*="banner"] button,
-div.updated-feature-banner a,
-div.updated-feature-banner button {
+.warning-banner {
+  background-color: var(--od-bg-alt) !important;
+  color: var(--od-fg) !important;
+  border-top: 1px solid var(--od-border) !important;
+}
+
+.warning-banner-link {
   color: var(--od-link) !important;
   font-weight: 700 !important;
 }
 
-/* --- 9. Right: Plugin Panels Outer Shell (Outline, Note Tabs) --- */
-.r-panel,
-div.joplin-plugin-view,
-div.panel-container,
-div[class*="outline"] {
+/* --- 9. Third-party plugin panels (Outline, Note Tabs, ...) --- */
+.resizableLayoutItem[class*="rli-plugin-view-"] {
   background-color: var(--od-bg) !important;
-  background: var(--od-bg) !important;
   border-left: 1px solid var(--od-border) !important;
 }
 
-.r-panel *,
-div.joplin-plugin-view * {
-  color: var(--od-fg) !important;
-}
-
-.r-panel svg,
-.r-panel path {
-  fill: var(--od-fg) !important;
-}
-
-.r-panel header,
-.r-panel .header,
-.r-panel > div:first-child {
-  background-color: var(--od-bg-alt) !important;
-  border-bottom: 1px solid var(--od-border) !important;
-}
-
-.r-panel iframe,
-div.joplin-plugin-view iframe {
-  background-color: var(--od-bg) !important;
-}
-
-/* --- 10. App-wide Custom Scrollbars --- */
-.side-bar::-webkit-scrollbar,
+/* --- 10. Scrollbars --- */
+.sidebar::-webkit-scrollbar,
 .note-list::-webkit-scrollbar,
-.r-panel::-webkit-scrollbar {
+.item-list::-webkit-scrollbar {
   width: 6px !important;
 }
 
-.side-bar::-webkit-scrollbar-track,
+.sidebar::-webkit-scrollbar-track,
 .note-list::-webkit-scrollbar-track,
-.r-panel::-webkit-scrollbar-track {
+.item-list::-webkit-scrollbar-track {
   background: var(--od-scrollbar-track) !important;
 }
 
-.side-bar::-webkit-scrollbar-thumb,
+.sidebar::-webkit-scrollbar-thumb,
 .note-list::-webkit-scrollbar-thumb,
-.r-panel::-webkit-scrollbar-thumb {
+.item-list::-webkit-scrollbar-thumb {
   background: var(--od-scrollbar-thumb) !important;
   border-radius: 3px !important;
 }
@@ -967,21 +647,32 @@ div.joplin-plugin-view iframe {
 // =================================================================
 // 2b. THIRD-PARTY PLUGIN PANEL (WEBVIEW) THEMING
 // =================================================================
+/**
+ * Stylesheet injected into plugin-owned iframes (Outline, Note Tabs, ...).
+ * These frames have their own document, so the shell cascade above is
+ * irrelevant there and is no longer concatenated - only the palette, the
+ * Joplin variables the panels read, and a small set of element defaults.
+ */
 export function buildPanelCss(options: StyleOptions): string {
-  const chromeCss = buildChromeCss(options);
-  if (!chromeCss) return '';
-  return `${chromeCss}
+  const selectedTheme = resolveTheme(options);
+  const { fontImport, resolvedFont } = resolveFonts(options);
+  const cssVariables = buildCssVariables(selectedTheme);
+
+  return `${fontImport}
+${cssVariables}
 :root {
-  --joplin-background-color: var(--od-bg) !important;
-  --joplin-background-color-transparent30: var(--od-selection) !important;
-  --joplin-color: var(--od-fg) !important;
-  --joplin-color-hover: var(--od-link) !important;
-  --joplin-divider-color: var(--od-border) !important;
+  --joplin-background-color: var(--od-bg);
+  --joplin-background-color-transparent30: var(--od-selection);
+  --joplin-color: var(--od-fg);
+  --joplin-color-hover: var(--od-link);
+  --joplin-divider-color: var(--od-border);
 }
-*, *::before, *::after {
-  border-color: var(--od-border) !important;
+html, body {
+  background-color: var(--od-bg) !important;
+  color: var(--od-fg) !important;
+  font-family: ${resolvedFont} !important;
 }
-body, html, #root, #app, .panel, header, .header, nav, .toolbar, .search-container, .top-bar {
+body, #root, #app, .panel, header, .header, nav, .toolbar, .search-container, .top-bar {
   background-color: var(--od-bg) !important;
   color: var(--od-fg) !important;
 }
