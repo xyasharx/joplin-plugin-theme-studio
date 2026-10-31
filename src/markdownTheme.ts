@@ -1,4 +1,4 @@
-import { buildThemeCss, StyleOptions } from './styles';
+import { buildThemeCss } from './styles';
 
 let cachedViewerCss = '';
 let lastViewerCacheKey = '';
