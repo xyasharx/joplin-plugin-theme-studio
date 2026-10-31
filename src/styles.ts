@@ -691,9 +691,13 @@ div.rli-noteList,
 div.rli-noteList > div {
   background-color: var(--od-bg) !important;
   background: var(--od-bg) !important;
+  font-family: ${resolvedFont} !important;
+}
+
+/* Keep the note-list separator on its outer scroll container. */
+.note-list {
   border-right: 1px solid var(--od-border) !important;
   border-left: 1px solid var(--od-border) !important;
-  font-family: ${resolvedFont} !important;
 }
 
 /* The font must be set on the text elements, not only on their containers:
@@ -714,7 +718,7 @@ div.rli-noteList > div {
 .note-list-item,
 div.rli-noteList .list-item-container {
   background-color: var(--od-bg) !important;
-  border-bottom: 1px solid var(--od-border) !important;
+  box-shadow: inset 0 -1px 0 var(--od-border) !important;
 }
 
 .note-list .list-item-container *,
@@ -1044,7 +1048,7 @@ div.joplin-plugin-view iframe {
 .side-bar::-webkit-scrollbar,
 .note-list::-webkit-scrollbar,
 .r-panel::-webkit-scrollbar {
-  width: 6px !important;
+  width: var(--scrollbar-size, 6px) !important;
 }
 
 .side-bar::-webkit-scrollbar-track,
