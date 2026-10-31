@@ -1050,21 +1050,23 @@ div.joplin-plugin-view iframe {
 }
 
 /* --- 10. App-wide Custom Scrollbars --- */
-.side-bar::-webkit-scrollbar,
+/* Joplin exposes the user's "Scrollbar size" setting as --scrollbar-size
+   (main.scss); a hard-coded width silently overrode that preference. */
+.sidebar::-webkit-scrollbar,
 .note-list::-webkit-scrollbar,
-.r-panel::-webkit-scrollbar {
-  width: 6px !important;
+.resizableLayoutItem[class*="rli-plugin-view-"]::-webkit-scrollbar {
+  width: var(--scrollbar-size, 7px) !important;
 }
 
-.side-bar::-webkit-scrollbar-track,
+.sidebar::-webkit-scrollbar-track,
 .note-list::-webkit-scrollbar-track,
-.r-panel::-webkit-scrollbar-track {
+.resizableLayoutItem[class*="rli-plugin-view-"]::-webkit-scrollbar-track {
   background: var(--od-scrollbar-track) !important;
 }
 
-.side-bar::-webkit-scrollbar-thumb,
+.sidebar::-webkit-scrollbar-thumb,
 .note-list::-webkit-scrollbar-thumb,
-.r-panel::-webkit-scrollbar-thumb {
+.resizableLayoutItem[class*="rli-plugin-view-"]::-webkit-scrollbar-thumb {
   background: var(--od-scrollbar-thumb) !important;
   border-radius: 3px !important;
 }
