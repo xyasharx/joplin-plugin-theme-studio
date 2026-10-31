@@ -719,7 +719,11 @@ div.rli-noteList > div {
 .note-list-item,
 div.rli-noteList .list-item-container {
   background-color: var(--od-bg) !important;
-  border-bottom: 1px solid var(--od-border) !important;
+  /* Drawn as an inset shadow, not a border: Joplin sizes the note-list
+     scroller from (row count x row height), so a 1px border on every row
+     makes the content overflow and produces a second scrollbar. */
+  border-bottom: none !important;
+  box-shadow: inset 0 -1px 0 var(--od-border) !important;
 }
 
 .note-list .list-item-container *,
