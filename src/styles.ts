@@ -1172,7 +1172,7 @@ ${S} blockquote {
   border-right: 1px solid var(--od-comment) !important;
   border-left: 0 !important;
 }
-${S} :is(th, td) { text-align: right !important; }
+${S} :is(th, td):not([style*="text-align"]) { text-align: right !important; }
 .mermaid .nodeLabel, .mermaid .edgeLabel, .mermaid .label, .mermaid text {
   direction: rtl !important;
   unicode-bidi: plaintext !important;
