@@ -1210,7 +1210,7 @@ ${S} [dir="ltr"] .md-checkbox input[type="checkbox"] {
   margin-right: 8px !important;
   margin-left: 0 !important;
 }
-${S} [dir="ltr"] table :is(th, td) { text-align: left !important; }
+${S} [dir="ltr"] table :is(th, td):not([style*="text-align"]) { text-align: left !important; }
 `;
   } else if (options.direction === 'auto') {
     // `:is([dir="x"], :dir(x))` keeps the original `:dir()` fallback for raw
@@ -1310,7 +1310,7 @@ ${S} blockquote${LTR} {
   direction: ltr !important;
 }
 
-${S} :is(th, td) { text-align: start !important; }
+${S} :is(th, td):not([style*="text-align"]) { text-align: start !important; }
 .mermaid .nodeLabel, .mermaid .edgeLabel, .mermaid .label, .mermaid text { unicode-bidi: plaintext !important; }
 `;
   } else {
@@ -1330,7 +1330,7 @@ ${S} blockquote {
   border-left: 1px solid var(--od-comment) !important;
   border-right: 0 !important;
 }
-${S} :is(th, td) { text-align: left !important; }
+${S} :is(th, td):not([style*="text-align"]) { text-align: left !important; }
 .mermaid .nodeLabel, .mermaid .edgeLabel, .mermaid .label, .mermaid text { direction: ltr !important; }
 `;
   }
