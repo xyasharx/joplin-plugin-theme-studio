@@ -691,9 +691,14 @@ div.rli-noteList,
 div.rli-noteList > div {
   background-color: var(--od-bg) !important;
   background: var(--od-bg) !important;
-  border-right: 1px solid var(--od-border) !important;
-  border-left: 1px solid var(--od-border) !important;
   font-family: ${resolvedFont} !important;
+}
+
+/* A single divider on the list itself. Drawing it on .note-list, on the
+   layout wrapper and on its child stacked three 1px lines at the same edge. */
+.note-list {
+  border-right: 1px solid var(--od-border) !important;
+  border-left: none !important;
 }
 
 /* The font must be set on the text elements, not only on their containers:
