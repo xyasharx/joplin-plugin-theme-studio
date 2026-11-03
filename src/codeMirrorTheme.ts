@@ -19,7 +19,12 @@
  *   toggles, …) re-uses the existing observer instead of stacking new ones.
  */
 
+interface StyleVersionPayload {
+  version: string;
+}
+
 interface StylePayload {
+  version?: string;
   editorCss: string;
   viewerCss: string;
   panelCss: string;
@@ -36,6 +41,9 @@ interface ThemeStudioRuntime {
   onFocus: (() => void) | null;
   rafId: number | null;
   inFlight: Promise<void> | null;
+  refreshQueued: boolean;
+  styleVersion: string;
+  pollId: number | null;
   watchedIframes: WeakSet<HTMLIFrameElement>;
   postMessage: ((message: unknown) => Promise<unknown>) | null;
 }
@@ -62,6 +70,9 @@ function getRuntime(): ThemeStudioRuntime {
       onFocus: null,
       rafId: null,
       inFlight: null,
+      refreshQueued: false,
+      styleVersion: '',
+      pollId: null,
       watchedIframes: new WeakSet<HTMLIFrameElement>(),
       postMessage: null,
     };
@@ -194,8 +205,13 @@ function applyAll(runtime: ThemeStudioRuntime): void {
 }
 
 function updateStyles(runtime: ThemeStudioRuntime): Promise<void> {
-  // Coalesce concurrent requests (window focus bursts, editor remount).
-  if (runtime.inFlight) return runtime.inFlight;
+  // Coalesce concurrent requests (focus bursts, editor remount), but never
+  // DROP one: a request that arrives while a fetch is in flight marks the
+  // runtime dirty and is served by a second fetch once the first settles.
+  if (runtime.inFlight) {
+    runtime.refreshQueued = true;
+    return runtime.inFlight;
+  }
 
   runtime.inFlight = (async () => {
     try {
@@ -203,6 +219,7 @@ function updateStyles(runtime: ThemeStudioRuntime): Promise<void> {
       const res = (await runtime.postMessage({ type: 'getAllStyles' })) as StylePayload | null;
       if (!res) return;
 
+      if (res.version) runtime.styleVersion = res.version;
       runtime.isMobile = res.platform === 'mobile';
       runtime.editorCss = res.editorCss || '';
       runtime.viewerCss = res.viewerCss || '';
@@ -213,10 +230,40 @@ function updateStyles(runtime: ThemeStudioRuntime): Promise<void> {
       console.warn('[Theme Studio] Failed to retrieve or apply styles:', err);
     } finally {
       runtime.inFlight = null;
+      // Serve a request that arrived mid-flight, so the last write always
+      // reflects the newest settings.
+      if (runtime.refreshQueued) {
+        runtime.refreshQueued = false;
+        void updateStyles(runtime);
+      }
     }
   })();
 
   return runtime.inFlight;
+}
+
+/**
+ * Cheap settings-change probe.
+ *
+ * Joplin exposes no plugin -> content-script push channel (JoplinContentScripts
+ * only has register() + onMessage()), so the content script has to ask. This
+ * sends a tiny { type: 'getStyleVersion' } message and only fetches the full
+ * stylesheet when the version token actually changed.
+ */
+function checkForStyleUpdates(runtime: ThemeStudioRuntime): void {
+  const postMessage = runtime.postMessage;
+  if (!postMessage || runtime.inFlight) return;
+
+  void (async () => {
+    try {
+      const res = (await postMessage({ type: 'getStyleVersion' })) as StyleVersionPayload | null;
+      if (!res || !res.version || res.version === runtime.styleVersion) return;
+      runtime.styleVersion = res.version;
+      await updateStyles(runtime);
+    } catch (err) {
+      console.warn('[Theme Studio] Failed to poll style version:', err);
+    }
+  })();
 }
 
 function isCodeMirrorMutation(mutation: MutationRecord): boolean {
@@ -242,6 +289,19 @@ function installGlobalHooks(runtime: ThemeStudioRuntime): void {
     void updateStyles(runtime);
   };
   window.addEventListener('focus', runtime.onFocus);
+
+  // Settings can change without the window ever losing focus (Command Palette,
+  // keyboard shortcut, another plugin writing the setting). Focus alone is not
+  // enough, so poll a version token and react to visibility changes.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) checkForStyleUpdates(runtime);
+  });
+
+  if (runtime.pollId === null) {
+    runtime.pollId = window.setInterval(() => {
+      if (!document.hidden) checkForStyleUpdates(runtime);
+    }, 2000);
+  }
 
   runtime.observer = new MutationObserver((mutations) => {
     // Keystrokes / cursor movement: every record lives inside CodeMirror.
