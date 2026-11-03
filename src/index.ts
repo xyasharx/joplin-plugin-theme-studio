@@ -330,29 +330,55 @@ joplin.plugins.register({
       };
     }
 
-    async function syncDesktopChromeFile(options: StyleOptions, enabled: boolean): Promise<void> {
-      if (isMobile) return;
-      try {
-        if (joplin.window && typeof (joplin.window as any).loadChromeCssFile === 'function') {
-          const content = enabled ? buildChromeCss(options) : '';
-          if (content === lastWrittenChromeCss) {
-            return;
-          }
-
-          // Joplin de-duplicates this path and re-creates its <link>; Blink gives
-          // local files a zero freshness lifetime on desktop, so the new content
-          // is picked up immediately. This is the single source of truth for the
-          // application shell – the content script must not inject a copy.
-          const fs = joplin.require('fs-extra');
-          const dataDir: string = await joplin.plugins.dataDir();
-          const chromeCssPath = `${dataDir}/theme-studio-chrome.css`;
-          await fs.writeFile(chromeCssPath, content, 'utf8');
-          await (joplin.window as any).loadChromeCssFile(chromeCssPath);
-          lastWrittenChromeCss = content; // only after success, so failures are retried
-        }
-      } catch (err) {
-        console.warn('[Theme Studio] Could not synchronize desktop chrome stylesheet:', err);
+    /**
+     * Cheap change token for the content scripts. Joplin has no push channel to
+     * a content script, so the script polls this instead of re-downloading the
+     * whole stylesheet.
+     */
+    async function getStyleVersion(): Promise<string> {
+      let vals: Record<string, any> = {};
+      if (typeof joplin.settings.values === 'function') {
+        vals = await joplin.settings.values(settingKeys);
+      } else {
+        const results = await Promise.all(settingKeys.map((k) => joplin.settings.value(k)));
+        settingKeys.forEach((k, idx) => { vals[k] = results[idx]; });
       }
+      const payload = settingKeys.map((k) => `${k}=${String(vals[k] ?? '')}`).join('\u0001');
+      return `${platform}:${payload}`;
+    }
+
+    // Serialise shell writes: a command (immediate refresh) and the debounced
+    // onChange handler can otherwise overlap and finish out of order.
+    let chromeSyncChain: Promise<void> = Promise.resolve();
+
+    async function syncDesktopChromeFile(options: StyleOptions, enabled: boolean): Promise<void> {
+      const run = async (): Promise<void> => {
+        if (isMobile) return;
+        try {
+          if (joplin.window && typeof (joplin.window as any).loadChromeCssFile === 'function') {
+            const content = enabled ? buildChromeCss(options) : '';
+            if (content === lastWrittenChromeCss) {
+              return;
+            }
+
+            // Joplin de-duplicates this path and re-creates its <link>; Blink gives
+            // local files a zero freshness lifetime on desktop, so the new content
+            // is picked up immediately. This is the single source of truth for the
+            // application shell – the content script must not inject a copy.
+            const fs = joplin.require('fs-extra');
+            const dataDir: string = await joplin.plugins.dataDir();
+            const chromeCssPath = `${dataDir}/theme-studio-chrome.css`;
+            await fs.writeFile(chromeCssPath, content, 'utf8');
+            await (joplin.window as any).loadChromeCssFile(chromeCssPath);
+            lastWrittenChromeCss = content; // only after success, so failures are retried
+          }
+        } catch (err) {
+          console.warn('[Theme Studio] Could not synchronize desktop chrome stylesheet:', err);
+        }
+      };
+
+      chromeSyncChain = chromeSyncChain.then(run, run);
+      return chromeSyncChain;
     }
 
     // 1. Initial application shell styling on cold launch
@@ -433,11 +459,16 @@ joplin.plugins.register({
 
     // 5. Respond to style requests (CodeMirror + TinyMCE Rich Text + Shell Chrome)
     await joplin.contentScripts.onMessage('themeStudioCodeMirror', async (message: any) => {
+      if (message && message.type === 'getStyleVersion') {
+        return { version: await getStyleVersion() };
+      }
+
       if (message && (message.type === 'getAllStyles' || message.type === 'getEditorStyles')) {
         const config = await getAllCurrentValues();
         await syncDesktopChromeFile(config.options, config.shellEnabled);
 
         return {
+          version: await getStyleVersion(),
           editorCss: config.editorEnabled ? buildEditorCss(config.options) : '',
           viewerCss: buildThemeCss(config.options, 'tinymce'), // Rich Text iframe only; the viewer builds its own
           panelCss: !isMobile && config.shellEnabled ? buildPanelCss(config.options) : '',
