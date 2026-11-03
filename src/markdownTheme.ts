@@ -61,16 +61,22 @@ function getMemoizedViewerCss(pluginOptions: any): string {
   return cachedViewerCss;
 }
 
-const RTL_REGEX = /[\u0591-\u07FF\uFB1D-\uFDFD\uFE70-\uFEFC]/;
-// First character that is not whitespace, an ASCII digit, punctuation or a symbol.
-const FIRST_SIGNIFICANT_CHAR = /[^\s0-9\p{P}\p{S}]/u;
+// Right-to-left scripts, by Unicode script property. Covers Hebrew, Arabic
+// (including Extended-A/B, which the old \u0591-\u07FF block range missed),
+// Syriac, Thaana, NKo, Adlam, Samaritan, Mandaic, Yezidi and Hanifi Rohingya.
+const RTL_SCRIPT = /[\p{Script=Arabic}\p{Script=Hebrew}\p{Script=Syriac}\p{Script=Thaana}\p{Script=Nko}\p{Script=Adlam}\p{Script=Samaritan}\p{Script=Mandaic}\p{Script=Yezidi}\p{Script=Hanifi_Rohingya}]/u;
+// First STRONG character: skips whitespace, punctuation, symbols and every
+// Unicode decimal digit (\p{Nd} covers ASCII, Arabic-Indic U+0660-0669 and
+// Devanagari alike). Digits carry bidi class AN/EN, i.e. they are weak — a
+// paragraph that opens with them must not be classified by them.
+const FIRST_SIGNIFICANT_CHAR = /[^\s\p{Nd}\p{P}\p{S}]/u;
 
 function isRtlContent(str: string): boolean {
   if (!str) return false;
-  // Stops at the first significant character instead of rewriting the whole
-  // block: O(1) in the common case rather than O(length) per paragraph.
+  // Stops at the first strong character instead of scanning the whole block:
+  // O(1) in the common case rather than O(length) per paragraph.
   const match = FIRST_SIGNIFICANT_CHAR.exec(str);
-  return match ? RTL_REGEX.test(match[0]) : false;
+  return match ? RTL_SCRIPT.test(match[0]) : false;
 }
 
 module.exports = {
