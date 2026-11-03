@@ -445,7 +445,10 @@ export function buildChromeCss(options: StyleOptions): string {
   // applied to the text elements themselves. A font set on the container is
   // only inherited, and inheritance always loses to a direct declaration - so
   // redefining the variable they read is what actually changes the UI font.
-  const cssVariables = buildCssVariables(selectedTheme, `  --joplin-font-family: ${resolvedFont} !important;\n`);
+  const cssVariables = buildCssVariables(
+    selectedTheme,
+    `  --joplin-font-family: ${resolvedFont} !important;\n  --od-active-accent: inset 0 0 0 0 transparent;\n`
+  );
 
   // BiDi synchronization: Protects UI toolbars, headers, and tree indentation
   let shellDirRules = '';
@@ -467,13 +470,10 @@ export function buildChromeCss(options: StyleOptions): string {
       }
 
       /* Active Note Indicator flips to right border in RTL */
-      div.rli-noteList [aria-selected="true"],
-      div.rli-noteList .selected,
-      div.note-list [aria-selected="true"],
-      div.note-list .selected {
-        border-right: 4px solid var(--od-h2) !important;
-        border-left: none !important;
-      }
+      /* Active-note accent. Set as a layer of the row's box-shadow (see the
+         note-list rule further down) rather than as a border: a 4px border
+         shifted the row's text 4px sideways on every selection. */
+      :root { --od-active-accent: inset -4px 0 0 0 var(--od-h2); }
 
       /* Sidebar titles use BiDi without breaking tree indentation or flex order */
       .side-bar .title,
@@ -502,13 +502,7 @@ export function buildChromeCss(options: StyleOptions): string {
         text-align: left !important;
       }
 
-      div.rli-noteList [aria-selected="true"],
-      div.rli-noteList .selected,
-      div.note-list [aria-selected="true"],
-      div.note-list .selected {
-        border-left: 4px solid var(--od-h2) !important;
-        border-right: none !important;
-      }
+      :root { --od-active-accent: inset 4px 0 0 0 var(--od-h2); }
     `;
   }
 
@@ -750,6 +744,23 @@ div.rli-noteList .list-item-container {
      makes the content overflow and produces a second scrollbar. */
   border-bottom: none !important;
   box-shadow: inset 0 -1px 0 var(--od-border) !important;
+}
+
+/* Selected row: the accent is a SECOND shadow layer on top of the separator,
+   scoped to the selected row only. Using a border here shifted the row text
+   4px sideways on every selection (measured); a :root-wide accent painted
+   every row. */
+div.rli-noteList [aria-selected="true"],
+div.rli-noteList .selected,
+div.rli-noteList div[class*="selected"],
+div.rli-noteList .list-item-container.selected,
+div.rli-noteList .note-list-item.selected,
+div.note-list [aria-selected="true"],
+div.note-list .selected,
+div.note-list div[class*="selected"],
+div.note-list .list-item-container.selected,
+div.note-list .note-list-item.selected {
+  box-shadow: var(--od-active-accent, inset 0 0 0 0 transparent), inset 0 -1px 0 var(--od-border) !important;
 }
 
 .note-list .list-item-container *,
