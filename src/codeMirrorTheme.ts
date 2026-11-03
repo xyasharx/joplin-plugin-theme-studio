@@ -258,7 +258,10 @@ function checkForStyleUpdates(runtime: ThemeStudioRuntime): void {
     try {
       const res = (await postMessage({ type: 'getStyleVersion' })) as StyleVersionPayload | null;
       if (!res || !res.version || res.version === runtime.styleVersion) return;
-      runtime.styleVersion = res.version;
+      // Do NOT record the version here: updateStyles() stores it only after the
+      // new sheet has been applied. Recording it before the fetch means a single
+      // failed request would make the poll believe it is already up to date and
+      // never retry, leaving stale styles until the next settings change.
       await updateStyles(runtime);
     } catch (err) {
       console.warn('[Theme Studio] Failed to poll style version:', err);
