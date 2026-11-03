@@ -153,12 +153,38 @@ function buildCssVariables(theme: ThemePalette, extra = ''): string {
   return css;
 }
 
+// =================================================================
+// 0b. CSS VALUE VALIDATION
+// =================================================================
+// Settings are free-text: a stray "}" would terminate a rule early and a
+// nonsense token silently drops a declaration. Every user-supplied CSS value
+// is normalised through one of these before interpolation.
+const CSS_LENGTH = /^-?\d+(?:\.\d+)?(?:px|rem|em|pt|pc|in|cm|mm|%|vh|vw|ch|ex)$/;
+const CSS_NUMBER = /^\d+(?:\.\d+)?$/;
+const CSS_BOX = /^[^;{}<>]{1,80}$/;
+
+function safeLength(value: string | undefined, fallback: string): string {
+  const v = (value || '').trim();
+  return CSS_LENGTH.test(v) ? v : fallback;
+}
+
+function safeNumber(value: string | undefined, fallback: string): string {
+  const v = (value || '').trim();
+  return CSS_NUMBER.test(v) ? v : fallback;
+}
+
+/** PDF margins: "standard", a preset key, or a user box value like "15mm 18mm". */
+function safeBox(value: string | undefined, fallback: string): string {
+  const v = (value || '').trim();
+  return CSS_BOX.test(v) && !/[;{}]/.test(v) ? v : fallback;
+}
+
 function resolvePdfSettings(options: StyleOptions) {
   const pageSize = options.pdfPageSize && PDF_PAGE_SIZES.has(options.pdfPageSize) ? options.pdfPageSize : 'a4';
 
   let margin: string;
   if (options.pdfPageMargin === 'custom') {
-    margin = options.customPdfMargin?.trim() || PDF_PAGE_MARGINS.standard;
+    margin = safeBox(options.customPdfMargin, PDF_PAGE_MARGINS.standard);
   } else {
     margin = PDF_PAGE_MARGINS[options.pdfPageMargin || 'standard'] || PDF_PAGE_MARGINS.standard;
   }
@@ -178,7 +204,7 @@ function resolveHeadingSizes(options: StyleOptions) {
     const parts = options.customHeadingSizes
       .split(',')
       .map((s) => s.replace(/h[1-6]:?/gi, '').trim())
-      .filter((s) => s.length > 0);
+      .filter((s) => CSS_LENGTH.test(s) || CSS_NUMBER.test(s) || /^calc\([^;{}<>]+\)$/.test(s));
 
     return {
       h1: parts[0] || defaultSizes.h1,
@@ -320,8 +346,8 @@ html body .r-markdown-editor {
 }
 
 .cm-content, .CodeMirror-lines {
-  font-size: ${options.fontSize} !important;
-  line-height: ${options.lineHeight} !important;
+  font-size: ${safeLength(options.fontSize, '16px')} !important;
+  line-height: ${safeNumber(options.lineHeight, '1.75')} !important;
   caret-color: var(--od-link) !important;
 }
 
@@ -1077,41 +1103,37 @@ div.joplin-plugin-view iframe {
 // 2b. THIRD-PARTY PLUGIN PANEL (WEBVIEW) THEMING
 // =================================================================
 export function buildPanelCss(options: StyleOptions): string {
-  const chromeCss = buildChromeCss(options);
-  if (!chromeCss) return '';
-  return `${chromeCss}
-:root {
+  if (!buildChromeCss(options)) return '';
+
+  // A plugin panel is a third-party document. Ship it the palette as custom
+  // properties plus the documented --joplin-* variables and a body background,
+  // and nothing else. The previous implementation embedded the entire 18 KB
+  // desktop-shell sheet AND blanket element rules (`a, span, div, li, p, i,
+  // button { color: … !important }`, `svg, path { fill: … !important }`,
+  // `*, *::before, *::after { border-color: … !important }`) which repainted
+  // every icon, semantic colour and border inside Outline, Note Tabs, etc.
+  const palette = themes[options.themeKey] || themes['atom-one-dark'];
+  const vars = Object.entries(palette.variables)
+    .map(([name, value]) => `  ${name}: ${value};`)
+    .join('\n');
+
+  return `:root {
+${vars}
   --joplin-background-color: var(--od-bg) !important;
   --joplin-background-color-transparent30: var(--od-selection) !important;
+  --joplin-background-color-hover3: var(--od-bg-alt) !important;
   --joplin-color: var(--od-fg) !important;
   --joplin-color-hover: var(--od-link) !important;
   --joplin-divider-color: var(--od-border) !important;
+  --joplin-scrollbar-thumb-color: var(--od-scrollbar-thumb) !important;
+  --joplin-scrollbar-color-hover: var(--od-scrollbar-hover) !important;
 }
-*, *::before, *::after {
-  border-color: var(--od-border) !important;
-}
-body, html, #root, #app, .panel, header, .header, nav, .toolbar, .search-container, .top-bar {
+body {
   background-color: var(--od-bg) !important;
   color: var(--od-fg) !important;
 }
-header, .header, nav, .toolbar, .search-container, .top-bar, .search-box {
-  background-color: var(--od-bg-alt) !important;
-  border-bottom: 1px solid var(--od-border) !important;
-}
-input, input[type="text"], input[type="search"] {
-  background-color: var(--od-bg) !important;
-  color: var(--od-fg) !important;
-  border: 1px solid var(--od-border) !important;
-}
-a, span, div, li, p, i, button {
-  color: var(--od-fg) !important;
-}
-svg, path {
-  fill: var(--od-fg) !important;
-  color: var(--od-fg) !important;
-}
-a:hover, .header-list-item:hover, li:hover {
-  background-color: var(--od-selection) !important;
+::-webkit-scrollbar-thumb {
+  background: var(--od-scrollbar-thumb) !important;
 }
 `;
 }
@@ -1353,8 +1375,8 @@ html, body${isViewer ? ', #rendered-md' : ''} { max-width: 100% !important; over
 
 body, ${S} {
   font-family: ${resolvedFont} !important;
-  line-height: ${options.lineHeight} !important;
-  font-size: ${options.fontSize} !important;
+  line-height: ${safeNumber(options.lineHeight, '1.75')} !important;
+  font-size: ${safeLength(options.fontSize, '16px')} !important;
   background-color: var(--od-bg) !important;
   color: var(--od-fg) !important;
   word-break: break-word !important;
@@ -1384,7 +1406,7 @@ ${S} h4 { color: var(--od-h4) !important; font-size: ${headingSizes.h4} !importa
 ${S} h5 { color: var(--od-h5) !important; font-size: ${headingSizes.h5} !important; font-weight: 600 !important; margin: 18px 0 10px 0 !important; }
 ${S} h6 { color: var(--od-h6) !important; font-size: ${headingSizes.h6} !important; font-weight: 700 !important; margin: 16px 0 10px 0 !important; }
 
-${S} li { margin-bottom: 0.45em !important; line-height: ${options.lineHeight} !important; }
+${S} li { margin-bottom: 0.45em !important; line-height: ${safeNumber(options.lineHeight, '1.75')} !important; }
 ${S} li::marker { color: var(--od-h2) !important; font-weight: bold !important; }
 
 .md-checkbox input[type="checkbox"] { vertical-align: middle !important; cursor: pointer !important; }
@@ -1780,7 +1802,7 @@ ${S} .footnotes {
     padding: ${contentPadding} !important;
     box-sizing: border-box !important;
     font-size: 14px !important;
-    line-height: ${options.lineHeight} !important;
+    line-height: ${safeNumber(options.lineHeight, '1.75')} !important;
   }
 
   #rendered-md :is(table, th, td) {
