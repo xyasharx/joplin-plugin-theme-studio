@@ -1642,6 +1642,14 @@ ${S} table {
   scrollbar-width: thin !important;
   scrollbar-color: var(--od-scrollbar-thumb) var(--od-scrollbar-track) !important;
   color: var(--od-fg) !important;
+  /* Do NOT inherit the document-level overflow-wrap: anywhere /
+     word-break: break-word (see the body rule above). Both make the
+     intrinsic min-content width of a table cell collapse to one character,
+     which lets the automatic table algorithm squeeze a column narrower than
+     its longest word - the "text in a 5-character column" bug. break-word
+     wraps long URLs when needed but leaves min-content intact. */
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
 }
 
 ${S} th {
@@ -1650,13 +1658,20 @@ ${S} th {
   font-weight: bold !important;
   border: 1px solid var(--od-border) !important;
   padding: 8px 12px !important;
-  white-space: nowrap !important;
+  /* Headers wrap instead of forcing the whole table past the right edge of
+     the pane (which pushed the last column out of view on wide tables). */
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
 }
 
 ${S} td {
   border: 1px solid var(--od-border) !important;
   padding: 8px 12px !important;
   color: var(--od-fg) !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
 }
 
 ${S} tr:nth-child(even) { background-color: var(--od-table-even) !important; }
@@ -1846,7 +1861,7 @@ ${S} .footnotes {
   #rendered-md tr { page-break-inside: avoid !important; break-inside: avoid !important; }
   #rendered-md :is(th, td) {
     white-space: normal !important;
-    word-break: break-word !important;
+    word-break: normal !important;
     overflow-wrap: break-word !important;
     padding: 6px 10px !important;
   }
