@@ -2,20 +2,28 @@
   "compilerOptions": {
     "target": "ES2018",
     "module": "commonjs",
-    "moduleResolution": "node",
+    // "node10" is the explicit name for what "node" used to mean. TypeScript 6.0
+    // deprecates it (7.0 removes it), so the deprecation is acknowledged here
+    // deliberately rather than silently: dropping the option is a separate
+    // migration to `module: preserve` + bundler resolution.
+    "moduleResolution": "node10",
+    "ignoreDeprecations": "6.0",
     "strict": true,
     "allowJs": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "baseUrl": ".",
+    // TypeScript 6.0 defaults `types` to [] instead of pulling in every
+    // @types package, which removes Node globals (global, module, process)
+    // used by the content scripts.
+    "types": ["node"],
+    // `baseUrl` is deprecated in 6.0 and removed in 7.0; paths are now
+    // relative to this file. Same resolution, future-proof form.
     "paths": {
-      "api": ["api/index"],
-      "api/*": ["api/*"]
+      "./api": ["./api/index"],
+      "api": ["./api/index"],
+      "api/*": ["./api/*"]
     },
     "outDir": "./dist"
   },
-  "include": [
-    "src/**/*",
-    "api/**/*"
-  ]
+  "include": ["src/**/*", "api/**/*"]
 }
