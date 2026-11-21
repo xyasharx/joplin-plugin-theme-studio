@@ -292,17 +292,21 @@ joplin.plugins.register({
       'customCss',
     ];
 
-    async function getAllCurrentValues(): Promise<{ options: StyleOptions; editorEnabled: boolean; shellEnabled: boolean; version: string }> {
-      let vals: Record<string, any> = {};
-
+    /** Reads all plugin settings in one round-trip (or via `value()` on APIs that lack `values()`). */
+    async function readSettings(): Promise<Record<string, any>> {
       if (typeof joplin.settings.values === 'function') {
-        vals = await joplin.settings.values(settingKeys);
-      } else {
-        const results = await Promise.all(settingKeys.map((k) => joplin.settings.value(k)));
-        settingKeys.forEach((k, idx) => {
-          vals[k] = results[idx];
-        });
+        return joplin.settings.values(settingKeys);
       }
+      const results = await Promise.all(settingKeys.map((k) => joplin.settings.value(k)));
+      const vals: Record<string, any> = {};
+      settingKeys.forEach((k, idx) => {
+        vals[k] = results[idx];
+      });
+      return vals;
+    }
+
+    async function getAllCurrentValues(): Promise<{ options: StyleOptions; editorEnabled: boolean; shellEnabled: boolean; version: string }> {
+      const vals = await readSettings();
 
       const options: StyleOptions = {
         themeKey: vals['theme'] || 'atom-one-dark',
@@ -341,14 +345,7 @@ joplin.plugins.register({
     }
 
     async function getStyleVersion(): Promise<string> {
-      let vals: Record<string, any> = {};
-      if (typeof joplin.settings.values === 'function') {
-        vals = await joplin.settings.values(settingKeys);
-      } else {
-        const results = await Promise.all(settingKeys.map((k) => joplin.settings.value(k)));
-        settingKeys.forEach((k, idx) => { vals[k] = results[idx]; });
-      }
-      return makeStyleVersion(vals);
+      return makeStyleVersion(await readSettings());
     }
 
     // Serialise shell writes: a command (immediate refresh) and the debounced

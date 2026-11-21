@@ -179,6 +179,20 @@ function safeBox(value: string | undefined, fallback: string): string {
   return CSS_BOX.test(v) && !/[;{}]/.test(v) ? v : fallback;
 }
 
+/**
+ * Font stacks come from free-text settings: a stray `}`, `;`, `<` or `>`
+ * would close the enclosing rule early and let the rest of the value parse
+ * as fresh rules (CSS injection). Font names and generic families never
+ * contain those characters, so strip them and collapse whitespace.
+ */
+function sanitizeFontStack(value: string | undefined, fallback: string): string {
+  const v = (value || '')
+    .replace(/[;{}<>\\]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return v || fallback;
+}
+
 function resolvePdfSettings(options: StyleOptions) {
   const pageSize = options.pdfPageSize && PDF_PAGE_SIZES.has(options.pdfPageSize) ? options.pdfPageSize : 'a4';
 
@@ -221,7 +235,7 @@ function resolveHeadingSizes(options: StyleOptions) {
 
 function resolveFonts(options: StyleOptions) {
   let fontImport = '';
-  let resolvedFont = options.fontFamily;
+  let resolvedFont = sanitizeFontStack(options.fontFamily, DEFAULT_FONT_STACK);
 
   switch (options.fontPreset) {
     case 'inter':
@@ -265,11 +279,11 @@ function resolveFonts(options: StyleOptions) {
       break;
     case 'custom':
     default:
-      resolvedFont = options.fontFamily || DEFAULT_FONT_STACK;
+      resolvedFont = sanitizeFontStack(options.fontFamily, DEFAULT_FONT_STACK);
       break;
   }
 
-  let resolvedCodeFont = options.codeFont;
+  let resolvedCodeFont = sanitizeFontStack(options.codeFont, DEFAULT_CODE_FONT_STACK);
   switch (options.codeFontPreset) {
     case 'fira-code':
       fontImport += `@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap');\n`;
@@ -284,7 +298,7 @@ function resolveFonts(options: StyleOptions) {
       break;
     case 'custom':
     default:
-      resolvedCodeFont = options.codeFont || DEFAULT_CODE_FONT_STACK;
+      resolvedCodeFont = sanitizeFontStack(options.codeFont, DEFAULT_CODE_FONT_STACK);
       break;
   }
 
@@ -1001,7 +1015,7 @@ div[class*="editor-toolbar"],
   border-radius: 4px !important;
 }
 
-/* --- 8. Bottom: Tag Bar & Notification Banners --- */
+/* --- 7. Bottom: Tag Bar & Notification Banners --- */
 .tag-bar,
 div.tag-bar,
 .tag-list,
@@ -1088,13 +1102,18 @@ div.joplin-plugin-view iframe {
 
 /* Joplin 3.7 whiteboards use these variables for the canvas, cards,
    controls and rendered Markdown. Scope them to the editor: user-selected
-   card and edge colours are inline and must remain untouched. */
+   card and edge colours are inline and must remain untouched.
+   Roles follow Joplin's own definitions: --joplin-color-faded is a muted
+   secondary text colour (distinct from --joplin-color) and
+   --joplin-background-color-hover3 is a distinct hover tint, so map them
+   to the palette's comment and selection tokens instead of reusing the
+   primary background/foreground values. */
 .whiteboard-editor {
   --joplin-background-color: var(--od-bg);
   --joplin-background-color3: var(--od-bg-alt);
-  --joplin-background-color-hover3: var(--od-bg-alt);
+  --joplin-background-color-hover3: var(--od-selection);
   --joplin-color: var(--od-fg);
-  --joplin-color-faded: var(--od-fg);
+  --joplin-color-faded: var(--od-comment);
   --joplin-divider-color: var(--od-border);
   --joplin-code-background-color: var(--od-code-bg);
   --joplin-code-border-color: var(--od-border);

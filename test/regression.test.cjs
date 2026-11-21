@@ -9,7 +9,7 @@ require.extensions['.ts'] = (module, filename) => {
   const source = fs.readFileSync(filename, 'utf8');
   module._compile(transformSync(source, { loader: 'ts', format: 'cjs', target: 'es2018' }).code, filename);
 };
-const { buildChromeCss } = require('../src/styles.ts');
+const { buildChromeCss, buildEditorCss, buildThemeCss } = require('../src/styles.ts');
 const { themes } = require('../src/themes.ts');
 const options = { themeKey: 'atom-one-dark', direction: 'ltr', fontPreset: 'system', fontFamily: '', codeFontPreset: 'system-mono', codeFont: '', fontSize: '16px', lineHeight: '1.75', contentMaxWidth: 'full', pdfExportStyle: 'exact' };
 
@@ -21,6 +21,37 @@ test('whiteboard variables follow every palette and do not overwrite chosen card
     for (const name of ['background-color', 'background-color3', 'color', 'divider-color', 'code-color', 'url-color']) assert.match(block, new RegExp(`--joplin-${name}:`));
     assert.doesNotMatch(css, /\.whiteboard-node\s*\{/);
   }
+});
+
+test('whiteboard mappings follow Joplin variable semantics', () => {
+  const css = buildChromeCss({ ...options, themeKey: 'atom-one-dark' });
+  const block = css.match(/\.whiteboard-editor\s*\{([^}]*)\}/)[1];
+  // Faded text and hover tints are distinct roles in Joplin's own theme
+  // definitions, so they must not reuse the primary foreground/background.
+  assert.match(block, /--joplin-color-faded: var\(--od-comment\)/);
+  assert.match(block, /--joplin-background-color-hover3: var\(--od-selection\)/);
+});
+
+test('font stacks are sanitized so user input cannot inject CSS rules', () => {
+  const optionsWithFonts = {
+    ...options,
+    fontPreset: 'custom',
+    fontFamily: 'x, }; body { background: red',
+    codeFontPreset: 'custom',
+    codeFont: 'y } p { color: blue',
+  };
+  for (const css of [buildEditorCss(optionsWithFonts), buildChromeCss(optionsWithFonts), buildThemeCss(optionsWithFonts, 'viewer')]) {
+    // No rule can be terminated early, so the remainder of the value can only
+    // parse as font-name text, never as fresh rules.
+    assert.doesNotMatch(css, /\};/);
+    const fontValue = /font-family: ([^;]*?) !important;/.exec(css);
+    assert.ok(fontValue, 'expected a font-family declaration');
+    assert.doesNotMatch(fontValue[1], /[;{}<>\\]/);
+  }
+  // Legitimate custom stacks still pass through untouched (compaction may
+  // collapse whitespace after commas).
+  const clean = buildThemeCss({ ...options, fontPreset: 'custom', fontFamily: "'Lora', Georgia, serif", codeFontPreset: 'custom', codeFont: "'Fira Code', monospace" }, 'viewer');
+  assert.match(clean, /font-family: 'Lora',\s*Georgia,\s*serif !important/);
 });
 
 test('viewer cache distinguishes settings containing delimiter characters', () => {
