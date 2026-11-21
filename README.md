@@ -113,6 +113,16 @@ Theme Studio is a modular palette and typography engine for Joplin. It applies u
 
 ---
 
+### Whiteboards (desktop)
+
+On Joplin 3.7 and later, the application shell theme also colors the native
+whiteboard canvas, controls, and uncolored cards. Disable **Theme Application
+Shell** to restore Joplin's whiteboard appearance. Explicit card, group, and
+edge colors are kept intact; their shades are chosen by Joplin based on its own
+light/dark setting, so choose a matching Joplin appearance for best contrast.
+Whiteboard theming depends on Joplin's desktop chrome stylesheet API. It does
+not theme third-party drawing plugins or change saved whiteboard data.
+
 ## ⚙️ Configuration Reference
 
 Access the settings panel under **Tools > Options > Theme Studio** (on Mobile: **Configuration > Plugins > Theme Studio**):
@@ -168,12 +178,19 @@ When **Layout Direction** is set to `RTL`, left-to-right code explanations, Engl
 git clone https://github.com/xyasharx/joplin-plugin-theme-studio.git
 cd joplin-plugin-theme-studio
 
-# 2. Install dependencies
-npm install
+# 2. Install locked dependencies
+npm ci
 
-# 3. Compile TypeScript and build .jpl bundle
+# 3. Type-check, build, and run regression tests
+npm test
+
+# 4. Build the .jpl bundle
 npm run dist
 ```
+
+The build uses TypeScript 7 for type checking and esbuild-loader for transpilation.
+Both `npm run build` and `npm run dist` run the type check; the loader does
+not type-check by itself.
 
 The compiled archive and hash metadata will be generated in the `publish/` directory:
 - `publish/org.joplin.plugin.theme-studio.jpl`
