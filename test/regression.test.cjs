@@ -236,3 +236,51 @@ test('production main bundle registers with the Joplin API', async () => {
     delete global.joplin;
   }
 });
+
+test('popular themes are present with complete palettes', () => {
+  const expected = ['solarized-dark', 'solarized-light', 'github-dark', 'github-light', 'tomorrow-night', 'tomorrow', 'ayu-dark', 'ayu-light', 'monokai', 'synthwave-84'];
+  for (const key of expected) {
+    assert.ok(themes[key], `theme ${key} is registered`);
+    assert.equal(typeof themes[key].name, 'string');
+    assert.equal(typeof themes[key].isDark, 'boolean');
+    assert.equal(typeof themes[key].variables['--od-bg'], 'string');
+    assert.equal(typeof themes[key].variables['--od-fg'], 'string');
+    assert.equal(typeof themes[key].variables['--od-comment'], 'string');
+    assert.equal(typeof themes[key].variables['--od-selection'], 'string');
+    assert.equal(typeof themes[key].variables['--od-scrollbar-thumb'], 'string');
+  }
+});
+
+test('every theme has a scheme pairing entry', () => {
+  const { schemePairs } = require('../src/themes.ts');
+  for (const key of Object.keys(themes)) {
+    const pair = schemePairs[key];
+    assert.ok(pair, `theme ${key} has a scheme pair`);
+    assert.ok(themes[pair.dark], `paired dark theme ${pair.dark} exists`);
+    assert.ok(themes[pair.light], `paired light theme ${pair.light} exists`);
+  }
+  // Self-paired themes must reference themselves; paired ones must cross-reference.
+  for (const [key, pair] of Object.entries(schemePairs)) {
+    if (themes[key].isDark) assert.equal(pair.dark, key);
+    else assert.equal(pair.light, key);
+    if (themes[pair.dark] && themes[pair.light]) {
+      assert.equal(schemePairs[pair.dark].light, pair.light);
+      assert.equal(schemePairs[pair.light].dark, pair.dark);
+    }
+  }
+});
+
+test('settings are registered under categorized sections', () => {
+  const source = fs.readFileSync(path.resolve(__dirname, '..', 'src', 'index.ts'), 'utf8');
+  const sectionIds = ['themeStudioAppearanceSection', 'themeStudioTypographySection', 'themeStudioElementsSection', 'themeStudioExportSection', 'themeStudioAdvancedSection'];
+  for (const id of sectionIds) {
+    assert.match(source, new RegExp(`registerSection\\('${id}'`), `section ${id} is registered`);
+  }
+  // Every registered setting must belong to one of the categorized sections.
+  const sectionMatches = [...source.matchAll(/section: '(themeStudio[A-Za-z]+Section)'/g)].map((m) => m[1]);
+  assert.equal(sectionMatches.length, 25);
+  for (const section of sectionMatches) {
+    assert.ok(sectionIds.includes(section), `setting uses categorized section ${section}`);
+  }
+  assert.doesNotMatch(source, /section: 'themeStudioSection'/);
+});

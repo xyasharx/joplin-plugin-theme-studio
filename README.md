@@ -86,6 +86,16 @@ Theme Studio is a modular palette and typography engine for Joplin. It applies u
 | **Gruvbox Light** | Light | Retro parchment light palette with warm accents |
 | **Atom One Dark** | Dark | Traditional Atom editor syntax theme |
 | **Atom One Light** | Light | High-clarity light theme with crisp editor contrast |
+| **Solarized Dark** | Dark | Iconic warm cyan-teal background with earthy accents |
+| **Solarized Light** | Light | Warm cream background with the Solarized accent palette |
+| **GitHub Dark** | Dark | GitHub's modern dark UI palette with cool grays |
+| **GitHub Light** | Light | GitHub's clean light UI palette |
+| **Tomorrow Night** | Dark | Classic pastel dark theme with soft syntax colors |
+| **Tomorrow** | Light | Classic pastel light theme with soft syntax colors |
+| **Ayu Dark** | Dark | Low-saturation dark palette with crisp cyan accents |
+| **Ayu Light** | Light | Low-saturation paper palette with cyan accents |
+| **Monokai** | Dark | The classic vibrant syntax-highlighting palette |
+| **Synthwave '84** | Dark | Retro neon-pink and cyan synthwave aesthetic |
 
 ---
 
@@ -125,32 +135,57 @@ not theme third-party drawing plugins or change saved whiteboard data.
 
 ## ⚙️ Configuration Reference
 
-Access the settings panel under **Tools > Options > Theme Studio** (on Mobile: **Configuration > Plugins > Theme Studio**):
+Access the settings panel under **Tools > Options > Theme Studio** (on Mobile: **Configuration > Plugins > Theme Studio**). Settings are organized into five groups: **Theme & Appearance**, **Typography**, **Code & Markdown Elements**, **Export**, and **Advanced**.
+
+### Theme & Appearance
 
 | Setting Key | Options / Inputs | Default | Description |
 | :--- | :--- | :--- | :--- |
-| **Color Theme** | 12 built-in palettes | `Atom One Dark` | Sets document, editor, and UI chrome color tokens |
+| **Color Theme** | 22 built-in palettes | `Atom One Dark` | Sets document, editor, and UI chrome color tokens |
 | **Layout Direction** | `LTR`, `Auto-Detect (BiDi)`, `RTL` | Auto-detected | Primary text direction and border alignment |
 | **Apply Theme to Markdown Editor** | `true` / `false` | `true` | Styles CodeMirror 6/5 and TinyMCE editors |
 | **Theme Application Shell** | `true` / `false` | `true` | Applies palette to Joplin sidebar, note list, and toolbars (Desktop only) |
+| **Color Scheme Mode** | `Use Selected Theme`, `Follow System (Light / Dark)` | `Use Selected Theme` | Follows the OS light/dark preference; themes without a matching counterpart keep their own look |
+
+### Typography
+
+| Setting Key | Options / Inputs | Default | Description |
+| :--- | :--- | :--- | :--- |
 | **International Font Preset** | 11 font presets | Auto-detected | On-demand web font loaded via CDN |
 | **Custom Font Stack** | CSS `font-family` string | System Stack | Active when preset is set to *Custom* |
-| **Code Font Preset** | `Fira Code`, `JetBrains Mono`, `System`, `Custom` | `Fira Code` | Monospace font for code blocks and editor |
-| **Custom Code Font Stack** | CSS `font-family` string | Cascadia / Consolas | Active when code preset is set to *Custom* |
 | **Font Size** | Text string (e.g., `16px`, `18px`) | `16px` | Scales base text size across desktop & mobile |
 | **Line Height** | Numeric string (e.g., `1.6`, `1.75`) | `1.75` | Sets body reading line spacing |
 | **Heading Sizes Preset** | `Balanced`, `Large`, `Compact`, `Custom` | `Balanced` | Typographic scale applied to H1 through H6 headings |
 | **Custom Heading Sizes** | Comma-separated sizes string | `1.75em, 1.42em, ...` | Custom sizes for H1 to H6 (e.g., `28px, 24px, 20px, ...`) |
 | **Reading Width (Focus Mode)** | `Full Width`, `Comfortable (920px)`, `Compact (760px)` | `Full Width` | Constrains note container width on wide monitors |
-| **PDF Export Appearance** | `Exact Match`, `Paper Friendly` | `Exact Match` | Controls background retention in exported PDFs |
-| **Custom CSS for Notes** | CSS string (single line recommended) | *(empty)* | Extra CSS appended after the theme stylesheet (notes and Rich Text editor) |
-| **Color Scheme Mode** | `Use Selected Theme`, `Follow System (Light / Dark)` | `Use Selected Theme` | Follows the OS light/dark preference; themes without a matching counterpart keep their own look |
+
+### Code & Markdown Elements
+
+| Setting Key | Options / Inputs | Default | Description |
+| :--- | :--- | :--- | :--- |
+| **Code Font Preset** | `Fira Code`, `JetBrains Mono`, `System`, `Custom` | `Fira Code` | Monospace font for code blocks and editor |
+| **Custom Code Font Stack** | CSS `font-family` string | Cascadia / Consolas | Active when code preset is set to *Custom* |
 | **Style Blockquotes** | `true` / `false` | `true` | Apply theme border, background and padding to blockquotes |
 | **Style Tables** | `true` / `false` | `true` | Apply theme borders, stripes and cell padding to tables |
 | **Style Images** | `true` / `false` | `true` | Apply theme shadow, border-radius and max-height to images |
 | **Style Headings** | `true` / `false` | `true` | Apply theme colours and heading accent borders |
 | **Style Links** | `true` / `false` | `true` | Apply theme link colour and underline |
 | **Style Code Blocks** | `true` / `false` | `true` | Apply theme backgrounds and borders to code blocks and inline code |
+
+### Export
+
+| Setting Key | Options / Inputs | Default | Description |
+| :--- | :--- | :--- | :--- |
+| **PDF Export Appearance** | `Exact Match`, `Paper Friendly` | `Exact Match` | Controls background retention in exported PDFs |
+| **PDF Page Size** | `A4`, `US Letter`, `A5`, `A3`, `US Legal`, `Auto` | `A4` | Standard paper dimensions for PDF export |
+| **PDF Page Margins** | `Standard`, `Comfortable`, `Compact`, `None`, `Custom` | `Standard` | Page margin width when exporting to PDF |
+| **Custom PDF Page Margins** | CSS margin string | `15mm 18mm` | Active when margins preset is set to *Custom* |
+
+### Advanced
+
+| Setting Key | Options / Inputs | Default | Description |
+| :--- | :--- | :--- | :--- |
+| **Custom CSS for Notes** | CSS string (single line recommended) | *(empty)* | Extra CSS appended after the theme stylesheet (notes and Rich Text editor) |
 
 ---
 
@@ -162,9 +197,10 @@ light)` blocks that swap in a matched light/dark counterpart palette at runtime,
 so the note, editor and application shell follow the OS appearance automatically —
 no restart or note re-render needed.
 
-Four theme families ship as true light/dark pairs and switch seamlessly:
-**Atom One**, **Everforest**, **Catppuccin** and **Gruvbox**. The remaining
-themes (Tokyo Night, Tokyo Night Storm, Nord and Dracula) have no matching
+Eight theme families ship as true light/dark pairs and switch seamlessly:
+**Atom One**, **Everforest**, **Catppuccin**, **Gruvbox**, **Solarized**,
+**GitHub**, **Tomorrow** and **Ayu**. The remaining themes (Tokyo Night,
+Tokyo Night Storm, Nord, Dracula, Monokai and Synthwave '84) have no matching
 counterpart, so they keep their own look in both schemes rather than silently
 changing palette. The native `color-scheme` is set alongside each block so
 scrollbars, form controls and other UA chrome follow too.

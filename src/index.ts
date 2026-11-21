@@ -45,16 +45,32 @@ joplin.plugins.register({
       defaultFontPreset = 'inter';
     }
 
-    await joplin.settings.registerSection('themeStudioSection', {
-      label: 'Theme Studio',
+    await joplin.settings.registerSection('themeStudioAppearanceSection', {
+      label: 'Theme & Appearance',
       iconName: 'fas fa-palette',
+    });
+    await joplin.settings.registerSection('themeStudioTypographySection', {
+      label: 'Typography',
+      iconName: 'fas fa-font',
+    });
+    await joplin.settings.registerSection('themeStudioElementsSection', {
+      label: 'Code & Markdown Elements',
+      iconName: 'fas fa-code',
+    });
+    await joplin.settings.registerSection('themeStudioExportSection', {
+      label: 'Export',
+      iconName: 'fas fa-file-pdf',
+    });
+    await joplin.settings.registerSection('themeStudioAdvancedSection', {
+      label: 'Advanced',
+      iconName: 'fas fa-sliders',
     });
 
     await joplin.settings.registerSettings({
       'theme': {
         value: 'atom-one-dark',
         type: SettingItemType.String,
-        section: 'themeStudioSection',
+        section: 'themeStudioAppearanceSection',
         isEnum: true,
         public: true,
         label: 'Color Theme',
@@ -72,12 +88,22 @@ joplin.plugins.register({
           'dracula': 'Dracula',
           'gruvbox-dark': 'Gruvbox Dark',
           'gruvbox-light': 'Gruvbox Light',
+          'solarized-dark': 'Solarized Dark',
+          'solarized-light': 'Solarized Light',
+          'github-dark': 'GitHub Dark',
+          'github-light': 'GitHub Light',
+          'tomorrow-night': 'Tomorrow Night',
+          'tomorrow': 'Tomorrow',
+          'ayu-dark': 'Ayu Dark',
+          'ayu-light': 'Ayu Light',
+          'monokai': 'Monokai',
+          'synthwave-84': "Synthwave '84",
         },
       },
       'direction': {
         value: defaultDirection,
         type: SettingItemType.String,
-        section: 'themeStudioSection',
+        section: 'themeStudioAppearanceSection',
         isEnum: true,
         public: true,
         label: 'Layout Direction',
@@ -91,7 +117,7 @@ joplin.plugins.register({
       'enableEditorTheme': {
         value: true,
         type: SettingItemType.Bool,
-        section: 'themeStudioSection',
+        section: 'themeStudioAppearanceSection',
         public: true,
         label: 'Apply Theme to Markdown Editor',
         description: 'Styles the CodeMirror editor (background, colors, line numbers, headings) to match the viewer.',
@@ -99,7 +125,7 @@ joplin.plugins.register({
       'themeApplicationShell': {
         value: true,
         type: SettingItemType.Bool,
-        section: 'themeStudioSection',
+        section: 'themeStudioAppearanceSection',
         public: true,
         label: 'Theme Application Shell (Sidebar & Note List)',
         description: 'Applies the active palette to Joplin\'s desktop sidebar, note list, and header (Desktop only).',
@@ -107,7 +133,7 @@ joplin.plugins.register({
       'fontPreset': {
         value: defaultFontPreset,
         type: SettingItemType.String,
-        section: 'themeStudioSection',
+        section: 'themeStudioTypographySection',
         isEnum: true,
         public: true,
         label: 'International Font Preset',
@@ -129,7 +155,7 @@ joplin.plugins.register({
       'fontFamily': {
         value: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
         type: SettingItemType.String,
-        section: 'themeStudioSection',
+        section: 'themeStudioTypographySection',
         public: true,
         label: 'Custom Font Stack',
         description: 'Active only when "Custom Font Stack" is selected above.',
@@ -137,7 +163,7 @@ joplin.plugins.register({
       'codeFontPreset': {
         value: 'fira-code',
         type: SettingItemType.String,
-        section: 'themeStudioSection',
+        section: 'themeStudioElementsSection',
         isEnum: true,
         public: true,
         label: 'Code Font Preset',
@@ -152,7 +178,7 @@ joplin.plugins.register({
       'codeFont': {
         value: "'Cascadia Code', 'Fira Code', 'Consolas', monospace",
         type: SettingItemType.String,
-        section: 'themeStudioSection',
+        section: 'themeStudioElementsSection',
         public: true,
         label: 'Custom Code Font Stack',
         description: 'Active only when "Custom Code Font" is selected above.',
@@ -160,7 +186,7 @@ joplin.plugins.register({
       'fontSize': {
         value: '16px',
         type: SettingItemType.String,
-        section: 'themeStudioSection',
+        section: 'themeStudioTypographySection',
         public: true,
         label: 'Font Size',
         description: 'Base font size (e.g., 14px, 16px, 18px, 20px). Works across Desktop & Mobile.',
@@ -168,7 +194,7 @@ joplin.plugins.register({
       'lineHeight': {
         value: '1.75',
         type: SettingItemType.String,
-        section: 'themeStudioSection',
+        section: 'themeStudioTypographySection',
         public: true,
         label: 'Line Height',
         description: 'Reading line spacing (e.g., 1.6, 1.75, 1.9).',
@@ -176,7 +202,7 @@ joplin.plugins.register({
       'headingSizePreset': {
         value: 'balanced',
         type: SettingItemType.String,
-        section: 'themeStudioSection',
+        section: 'themeStudioTypographySection',
         isEnum: true,
         public: true,
         label: 'Heading Sizes Preset',
@@ -191,7 +217,7 @@ joplin.plugins.register({
       'customHeadingSizes': {
         value: '1.75em, 1.42em, 1.25em, 1.12em, 1.05em, 1.0em',
         type: SettingItemType.String,
-        section: 'themeStudioSection',
+        section: 'themeStudioTypographySection',
         public: true,
         label: 'Custom Heading Sizes (H1 - H6)',
         description: 'Active only when "Custom Sizes" is selected. Comma-separated sizes from H1 to H6 (e.g., 28px, 24px, 20px, 18px, 16px, 14px or 2.2em, 1.7em, 1.4em, 1.2em, 1.1em, 1.0em).',
@@ -199,7 +225,7 @@ joplin.plugins.register({
       'contentMaxWidth': {
         value: 'full',
         type: SettingItemType.String,
-        section: 'themeStudioSection',
+        section: 'themeStudioTypographySection',
         isEnum: true,
         public: true,
         label: 'Reading Width (Focus Mode)',
@@ -213,7 +239,7 @@ joplin.plugins.register({
       'pdfExportStyle': {
         value: 'exact',
         type: SettingItemType.String,
-        section: 'themeStudioSection',
+        section: 'themeStudioExportSection',
         isEnum: true,
         public: true,
         label: 'PDF Export Appearance',
@@ -226,7 +252,7 @@ joplin.plugins.register({
       'pdfPageSize': {
         value: 'a4',
         type: SettingItemType.String,
-        section: 'themeStudioSection',
+        section: 'themeStudioExportSection',
         isEnum: true,
         public: true,
         label: 'PDF Page Size',
@@ -243,7 +269,7 @@ joplin.plugins.register({
       'pdfPageMargin': {
         value: 'standard',
         type: SettingItemType.String,
-        section: 'themeStudioSection',
+        section: 'themeStudioExportSection',
         isEnum: true,
         public: true,
         label: 'PDF Page Margins',
@@ -259,7 +285,7 @@ joplin.plugins.register({
       'customPdfMargin': {
         value: '15mm 18mm',
         type: SettingItemType.String,
-        section: 'themeStudioSection',
+        section: 'themeStudioExportSection',
         public: true,
         label: 'Custom PDF Page Margins',
         description: 'Active only when "Custom Margins" is selected above (e.g., "15mm 18mm", "1in", "10mm 15mm 10mm 15mm").',
@@ -267,7 +293,7 @@ joplin.plugins.register({
       'customCss': {
         value: '',
         type: SettingItemType.String,
-        section: 'themeStudioSection',
+        section: 'themeStudioAdvancedSection',
         public: true,
         label: 'Custom CSS for notes',
         description: 'Extra CSS appended after the theme stylesheet (notes and Rich Text editor). Keep it on one line, e.g. "#rendered-md h1 { letter-spacing: -0.5px; }".',
@@ -275,7 +301,7 @@ joplin.plugins.register({
       'colorSchemeMode': {
         value: 'theme',
         type: SettingItemType.String,
-        section: 'themeStudioSection',
+        section: 'themeStudioAppearanceSection',
         isEnum: true,
         public: true,
         label: 'Color Scheme Mode',
@@ -288,7 +314,7 @@ joplin.plugins.register({
       'styleBlockquotes': {
         value: true,
         type: SettingItemType.Bool,
-        section: 'themeStudioSection',
+        section: 'themeStudioElementsSection',
         public: true,
         label: 'Style Blockquotes',
         description: 'Apply the theme border, background and padding to blockquotes. Disable to render them as plain text.',
@@ -296,7 +322,7 @@ joplin.plugins.register({
       'styleTables': {
         value: true,
         type: SettingItemType.Bool,
-        section: 'themeStudioSection',
+        section: 'themeStudioElementsSection',
         public: true,
         label: 'Style Tables',
         description: 'Apply theme borders, stripes and cell padding to tables. Disable to render them without any table styling.',
@@ -304,7 +330,7 @@ joplin.plugins.register({
       'styleImages': {
         value: true,
         type: SettingItemType.Bool,
-        section: 'themeStudioSection',
+        section: 'themeStudioElementsSection',
         public: true,
         label: 'Style Images',
         description: 'Apply the theme shadow, border-radius and max-height to images. Disable to render them without decoration.',
@@ -312,7 +338,7 @@ joplin.plugins.register({
       'styleHeadings': {
         value: true,
         type: SettingItemType.Bool,
-        section: 'themeStudioSection',
+        section: 'themeStudioElementsSection',
         public: true,
         label: 'Style Headings',
         description: 'Apply theme colours and the heading accent borders. Disable to render headings in the body colour without borders.',
@@ -320,7 +346,7 @@ joplin.plugins.register({
       'styleLinks': {
         value: true,
         type: SettingItemType.Bool,
-        section: 'themeStudioSection',
+        section: 'themeStudioElementsSection',
         public: true,
         label: 'Style Links',
         description: 'Apply the theme link colour and underline. Disable to render links like plain body text.',
@@ -328,7 +354,7 @@ joplin.plugins.register({
       'styleCodeBlocks': {
         value: true,
         type: SettingItemType.Bool,
-        section: 'themeStudioSection',
+        section: 'themeStudioElementsSection',
         public: true,
         label: 'Style Code Blocks',
         description: 'Apply theme backgrounds and borders to code blocks and inline code. Disable to render them without backgrounds.',
