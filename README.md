@@ -15,7 +15,10 @@ Theme Studio is a modular palette and typography engine for Joplin. It applies u
   - CodeMirror Markdown Editor (gutters, syntax highlighting, active line, caret, selection).
   - TinyMCE Rich Text Editor (iframe document and toolbar).
   - Desktop Application Shell (Sidebar, Note List, Header, Search Bar, Splitters, and Sync Panel).
-- **12 Integrated Color Schemes:** Switch between dark and light palettes (Tokyo Night, Everforest, Catppuccin, Nord, Dracula, Gruvbox, Atom One) without restarting Joplin.
+- **29 Integrated Color Schemes:** Switch between dark and light palettes (Tokyo Night, Everforest, Catppuccin, Nord, Dracula, Gruvbox, Atom One, One Dark Pro, Rose Pine, Solarized, GitHub, Monokai, SynthWave and more) without restarting Joplin.
+- **Custom Palette Builder:** Pick three base colours (background, foreground, accent) and the plugin derives a complete palette automatically — headings, surfaces, code, tables, scrollbars, and syntax tokens.
+- **Palette Import & Export:** Export every palette (built-in and imported) as shareable JSON, and import palettes back from the clipboard. Imported palettes join the theme selector and support automatic light/dark switching when they declare a pairing.
+- **Per-Notebook / Per-Tag Theme Overrides:** Pin a different palette to specific notebooks (by ID or title) or tags, so e.g. work notes use one palette while personal notes use another. The effective palette is resolved automatically from the active note.
 - **Third-Party Plugin Panel Synchronization:** Propagates theme variables, background colors, and font styles into webview panels created by third-party plugins (such as *Outline* and *Note Tabs*).
 - **Configurable Heading Typography Scales:** Choose between balanced, large editorial, compact dense, or custom comma-separated typographic scales for H1 through H6 headings.
 - **Smart BiDi Locale Detection:** Queries Joplin's interface language on launch. Automatically defaults to LTR with Inter for global locales, and RTL with Vazirmatn for Persian, Arabic, and Hebrew interfaces.
@@ -96,6 +99,12 @@ Theme Studio is a modular palette and typography engine for Joplin. It applies u
 | **Ayu Light** | Light | Low-saturation paper palette with cyan accents |
 | **Monokai** | Dark | The classic vibrant syntax-highlighting palette |
 | **Synthwave '84** | Dark | Retro neon-pink and cyan synthwave aesthetic |
+| **One Dark Pro** | Dark | VS Code's polished dark palette with violet accents |
+| **Rose Pine** | Dark | Soothing muted dark palette with dusty pink accents |
+| **Rose Pine Dawn** | Light | Warm morning variant of Rose Pine |
+| **Gruvbox Material Dark** | Dark | Material-design take on the retro Gruvbox palette |
+| **Gruvbox Material Light** | Light | Material-design light Gruvbox with warm gold accents |
+| **Nord Night** | Dark | Deeper Nord variant for low-light reading |
 
 ---
 
@@ -141,11 +150,14 @@ All settings live on a single plugin page under **Tools > Options > Theme Studio
 
 | Setting Key | Options / Inputs | Default | Description |
 | :--- | :--- | :--- | :--- |
-| **Color Theme** | 22 built-in palettes | `Atom One Dark` | Sets document, editor, and UI chrome color tokens |
+| **Color Theme** | 29 built-in palettes + custom & imported palettes | `Atom One Dark` | Sets document, editor, and UI chrome color tokens |
 | **Layout Direction** | `LTR`, `Auto-Detect (BiDi)`, `RTL` | Auto-detected | Primary text direction and border alignment |
 | **Apply Theme to Markdown Editor** | `true` / `false` | `true` | Styles CodeMirror 6/5 and TinyMCE editors |
 | **Theme Application Shell** | `true` / `false` | `true` | Applies palette to Joplin sidebar, note list, and toolbars (Desktop only) |
 | **Color Scheme Mode** | `Use Selected Theme`, `Follow System (Light / Dark)` | `Use Selected Theme` | Follows the OS light/dark preference; themes without a matching counterpart keep their own look |
+| **Per-Notebook Theme Overrides** | Multiline `id:`/`title:` mappings | *(empty)* | Pins a palette to notebooks (by ID or title) for the active note |
+| **Per-Tag Theme Overrides** | Multiline `id:`/`title:` mappings | *(empty)* | Pins a palette to tags (by ID or title) for the active note |
+| **Note Theme (Resolved)** | Palette key | *(auto)* | Internal: the palette resolved for the active note from the overrides above |
 
 ### Typography
 
@@ -155,6 +167,10 @@ All settings live on a single plugin page under **Tools > Options > Theme Studio
 | **Custom Font Stack** | CSS `font-family` string | System Stack | Active when preset is set to *Custom* |
 | **Font Size** | Text string (e.g., `16px`, `18px`) | `16px` | Scales base text size across desktop & mobile |
 | **Line Height** | Numeric string (e.g., `1.6`, `1.75`) | `1.75` | Sets body reading line spacing |
+| **Letter Spacing** | CSS length (e.g., `0.5px`, `0.02em`) | *(empty)* | Opt-in letter-spacing applied to rendered notes |
+| **Paragraph Alignment** | `Left`, `Justify` | `Left` | Justifies body paragraphs for long-form reading |
+| **Hyphenation** | `true` / `false` | `false` | Enables `hyphens: auto` for justified text |
+| **Font Ligatures** | `true` / `false` | `false` | Enables common ligatures and `font-feature-settings` |
 | **Heading Sizes Preset** | `Balanced`, `Large`, `Compact`, `Custom` | `Balanced` | Typographic scale applied to H1 through H6 headings |
 | **Custom Heading Sizes** | Comma-separated sizes string | `1.75em, 1.42em, ...` | Custom sizes for H1 to H6 (e.g., `28px, 24px, 20px, ...`) |
 | **Reading Width (Focus Mode)** | `Full Width`, `Comfortable (920px)`, `Compact (760px)` | `Full Width` | Constrains note container width on wide monitors |
@@ -186,6 +202,31 @@ All settings live on a single plugin page under **Tools > Options > Theme Studio
 | Setting Key | Options / Inputs | Default | Description |
 | :--- | :--- | :--- | :--- |
 | **Custom CSS for Notes** | CSS string (single line recommended) | *(empty)* | Extra CSS appended after the theme stylesheet (notes and Rich Text editor) |
+| **Custom Palette Name** | Text string | `Custom Palette` | Name of the generated custom palette |
+| **Custom Palette Background** | Hex colour (`#RRGGBB`) | *(empty)* | Base background colour for the custom palette |
+| **Custom Palette Foreground** | Hex colour (`#RRGGBB`) | *(empty)* | Base foreground colour for the custom palette |
+| **Custom Palette Accent** | Hex colour (`#RRGGBB`) | *(empty)* | Base accent colour for the custom palette |
+| **Imported Palettes (JSON)** | JSON array | *(empty)* | Stored palettes imported via the clipboard command |
+
+### Palette Import & Export
+
+Two commands manage palette sharing (Command Palette or Keyboard Shortcuts):
+
+- **Theme Studio: Export all palettes to clipboard** — serializes every built-in
+  and imported palette (name, dark/light flag, full `--od-*` variable set) to
+  clipboard JSON.
+- **Theme Studio: Import palettes from clipboard** — parses a JSON payload
+  (bare array, single palette object, or `{ "palettes": [...] }` wrapper),
+  validates every palette, and merges valid entries into the **Imported
+  Palettes** setting. Imported palettes appear in the **Color Theme** selector
+  and participate in automatic light/dark switching when they declare a
+  `pairWith` counterpart.
+
+The **Custom Palette Builder** settings generate a complete palette from three
+base colours: the heading scale is derived from the accent with modest hue
+rotations, surfaces and code backgrounds from luminance mixes, and syntax
+tokens from the derived contrast palette. A valid background, foreground and
+accent are required before the palette is added to the selector.
 
 ---
 

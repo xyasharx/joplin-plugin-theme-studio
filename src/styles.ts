@@ -30,6 +30,18 @@ export interface StyleOptions {
   styleHeadings?: boolean;
   styleLinks?: boolean;
   styleCodeBlocks?: boolean;
+  // Typography micro-tuning (P2): letter spacing, paragraph justification,
+  // hyphenation and font ligatures / feature settings.
+  letterSpacing?: string;
+  textAlign?: string;
+  hyphenation?: boolean;
+  fontLigatures?: boolean;
+  // Per-note theme overrides (P2): the resolved effective theme for the
+  // active note, computed by the main process from the note's notebook and
+  // tags. Empty falls back to `themeKey`.
+  noteThemeEffective?: string;
+  themeByNotebook?: string;
+  themeByTag?: string;
 }
 
 /**
@@ -152,8 +164,27 @@ function buildTokenVariables(theme: ThemePalette): string {
   return css;
 }
 
-function resolveTheme(options: StyleOptions): ThemePalette {
-  return themes[options.themeKey] || themes['atom-one-dark'];
+export type PaletteMap = Record<string, ThemePalette>;
+
+/**
+ * Resolves the palette for a style build. Runtime palettes (the generated
+ * custom builder palette and imported palettes) are passed in by the caller;
+ * the built-in `themes` registry is the fallback.
+ */
+function resolveTheme(options: StyleOptions, palettes: PaletteMap = themes): ThemePalette {
+  const key = options.noteThemeEffective && palettes[options.noteThemeEffective]
+    ? options.noteThemeEffective
+    : options.themeKey;
+  return palettes[key] || themes[key] || themes['atom-one-dark'];
+}
+
+/** Resolves the light/dark counterpart keys of a palette, if it declares one. */
+function resolvePair(themeKey: string, theme: ThemePalette, palettes: PaletteMap): { dark: string; light: string } | null {
+  const counterpartKey = theme.pairWith;
+  if (!counterpartKey || !palettes[counterpartKey]) return null;
+  return theme.isDark
+    ? { dark: themeKey, light: counterpartKey }
+    : { dark: counterpartKey, light: themeKey };
 }
 
 function buildCssVariables(theme: ThemePalette, extra = ''): string {
@@ -174,20 +205,40 @@ function buildCssVariables(theme: ThemePalette, extra = ''): string {
  * the OS preference. `color-scheme` is declared on each block so the browser
  * paints native UI (scrollbars, form controls) in the matching scheme.
  */
-function buildSchemeCssVariables(options: StyleOptions, extra = ''): string {
-  const selected = resolveTheme(options);
+/** Resolves the palette key actually in effect: the per-note override when it exists, else the selected theme. */
+function effectiveThemeKey(options: StyleOptions, palettes: PaletteMap): string {
+  return options.noteThemeEffective && palettes[options.noteThemeEffective]
+    ? options.noteThemeEffective
+    : options.themeKey;
+}
+
+function buildSchemeCssVariables(options: StyleOptions, extra = '', palettes: PaletteMap = themes): string {
+  const selected = resolveTheme(options, palettes);
   const baseScheme = selected.isDark ? 'dark' : 'light';
   let css = buildCssVariables(selected, `  color-scheme: ${baseScheme};\n${extra}`);
 
   if (options.colorSchemeMode !== 'system') return css;
 
-  const pair = schemePairs[options.themeKey];
-  // A self-paired theme (dark === light, e.g. Nord) has no counterpart to
-  // switch to, so no media blocks are emitted and the palette stays put.
-  if (!pair || pair.dark === pair.light) return css;
+  // A theme with no counterpart (or a self-paired one) has nothing to switch
+  // to, so no media blocks are emitted and the palette stays put.
+  const effectiveKey = effectiveThemeKey(options, palettes);
+  let darkKey: string | null = null;
+  let lightKey: string | null = null;
+  const declaredPair = resolvePair(effectiveKey, selected, palettes);
+  if (declaredPair) {
+    darkKey = declaredPair.dark;
+    lightKey = declaredPair.light;
+  } else {
+    const schemePair = schemePairs[effectiveKey];
+    if (schemePair && schemePair.dark !== schemePair.light) {
+      darkKey = schemePair.dark;
+      lightKey = schemePair.light;
+    }
+  }
+  if (!darkKey || !lightKey) return css;
 
-  const darkTheme = themes[pair.dark] || selected;
-  const lightTheme = themes[pair.light] || selected;
+  const darkTheme = palettes[darkKey] || themes[darkKey] || selected;
+  const lightTheme = palettes[lightKey] || themes[lightKey] || selected;
   css += `\n@media (prefers-color-scheme: dark) {\n${buildCssVariables(darkTheme, '  color-scheme: dark;\n')}\n}\n`;
   css += `@media (prefers-color-scheme: light) {\n${buildCssVariables(lightTheme, '  color-scheme: light;\n')}\n}\n`;
   return css;
@@ -198,17 +249,19 @@ function buildSchemeCssVariables(options: StyleOptions, extra = ''): string {
  * each @media block recomputes the contrast-adjusted token colours for its
  * theme so code blocks stay readable in both schemes.
  */
-function buildSchemeTokenVariables(options: StyleOptions): string {
-  const selected = resolveTheme(options);
+function buildSchemeTokenVariables(options: StyleOptions, palettes: PaletteMap = themes): string {
+  const selected = resolveTheme(options, palettes);
   let css = buildTokenVariables(selected);
 
   if (options.colorSchemeMode !== 'system') return css;
 
-  const pair = schemePairs[options.themeKey];
+  const effectiveKey = effectiveThemeKey(options, palettes);
+  const declaredPair = resolvePair(effectiveKey, selected, palettes);
+  const pair = declaredPair || schemePairs[effectiveKey];
   if (!pair || pair.dark === pair.light) return css;
 
-  const darkTheme = themes[pair.dark] || selected;
-  const lightTheme = themes[pair.light] || selected;
+  const darkTheme = palettes[pair.dark] || themes[pair.dark] || selected;
+  const lightTheme = palettes[pair.light] || themes[pair.light] || selected;
   css += `\n@media (prefers-color-scheme: dark) {\n${buildTokenVariables(darkTheme)}\n}\n`;
   css += `@media (prefers-color-scheme: light) {\n${buildTokenVariables(lightTheme)}\n}\n`;
   return css;
@@ -404,10 +457,10 @@ function resolveFonts(options: StyleOptions) {
 // =================================================================
 // 1. MARKDOWN EDITOR (CodeMirror 6, CodeMirror 5 & TinyMCE) ENGINE
 // =================================================================
-export function buildEditorCss(options: StyleOptions): string {
-  const selectedTheme = resolveTheme(options);
+export function buildEditorCss(options: StyleOptions, palettes: PaletteMap = themes): string {
+  const selectedTheme = resolveTheme(options, palettes);
   const { fontImport, resolvedFont, resolvedCodeFont } = resolveFonts(options);
-  const cssVariables = buildSchemeCssVariables(options);
+  const cssVariables = buildSchemeCssVariables(options, '', palettes);
 
   let dirCss = '';
   if (options.direction === 'rtl') {
@@ -546,8 +599,8 @@ ${dirCss}
 // =================================================================
 // 2. APPLICATION SHELL (DESKTOP UI) THEMING ENGINE
 // =================================================================
-export function buildChromeCss(options: StyleOptions): string {
-  const selectedTheme = resolveTheme(options);
+export function buildChromeCss(options: StyleOptions, palettes: PaletteMap = themes): string {
+  const selectedTheme = resolveTheme(options, palettes);
   const { fontImport, resolvedFont } = resolveFonts(options);
 
   // Joplin paints the sidebar and note list with rules such as
@@ -1246,7 +1299,7 @@ div.joplin-plugin-view iframe {
 // =================================================================
 // 2b. THIRD-PARTY PLUGIN PANEL (WEBVIEW) THEMING
 // =================================================================
-export function buildPanelCss(options: StyleOptions): string {
+export function buildPanelCss(options: StyleOptions, palettes: PaletteMap = themes): string {
   // A plugin panel is a third-party document. Ship it the palette as custom
   // properties plus the documented --joplin-* variables and a body background,
   // and nothing else. The previous implementation embedded the entire 18 KB
@@ -1254,7 +1307,7 @@ export function buildPanelCss(options: StyleOptions): string {
   // button { color: … !important }`, `svg, path { fill: … !important }`,
   // `*, *::before, *::after { border-color: … !important }`) which repainted
   // every icon, semantic colour and border inside Outline, Note Tabs, etc.
-  const schemeVars = buildSchemeCssVariables(options, `  --od-active-accent: inset 0 0 0 0 transparent;\n`);
+  const schemeVars = buildSchemeCssVariables(options, `  --od-active-accent: inset 0 0 0 0 transparent;\n`, palettes);
 
   // The --joplin-* mappings reference var(--od-*) and therefore follow the
   // active scheme automatically; they only need to exist once, in the base
@@ -1290,15 +1343,15 @@ body {
  * keeps exactly the specificity it had when the two targets were spelled out
  * side by side, so the cascade is unchanged – only the dead half is gone.
  */
-export function buildThemeCss(options: StyleOptions, target: CssTarget = 'viewer'): string {
+export function buildThemeCss(options: StyleOptions, target: CssTarget = 'viewer', palettes: PaletteMap = themes): string {
   const isViewer = target !== 'tinymce';
   const S = isViewer ? '#rendered-md' : 'body#tinymce';
 
-  const selectedTheme = resolveTheme(options);
-  const tokenVariables = buildSchemeTokenVariables(options);
+  const selectedTheme = resolveTheme(options, palettes);
+  const tokenVariables = buildSchemeTokenVariables(options, palettes);
   const { fontImport, resolvedFont, resolvedCodeFont } = resolveFonts(options);
   const headingSizes = resolveHeadingSizes(options);
-  const cssVariables = buildSchemeCssVariables(options, `  --mermaid-font-family: ${resolvedFont} !important;\n`);
+  const cssVariables = buildSchemeCssVariables(options, `  --mermaid-font-family: ${resolvedFont} !important;\n`, palettes);
 
   // Directional rules ------------------------------------------------------
   let dirRules = '';
@@ -1510,6 +1563,29 @@ ${S} :is(th, td):not([style*="text-align"]) { text-align: left !important; }
 
   const PRE = `${S} pre:not(.mermaid):not(.joplin-source)`;
 
+  // Typography micro-tuning (P2): letter spacing, paragraph justification,
+  // hyphenation and font ligatures. Each is opt-in and only emitted when the
+  // corresponding setting is active, so the default stylesheet is unchanged.
+  const typographyRules: string[] = [];
+  const letterSpacing = safeLength(options.letterSpacing ?? '', '');
+  if (letterSpacing) {
+    typographyRules.push(`${S} { letter-spacing: ${letterSpacing} !important; }`);
+  }
+  if (options.textAlign === 'justify') {
+    typographyRules.push(`${S} p { text-align: justify !important; }`);
+  }
+  if (options.hyphenation) {
+    typographyRules.push(`${S} { hyphens: auto !important; -webkit-hyphens: auto !important; }`);
+    typographyRules.push(`${S} p { hyphens: auto !important; -webkit-hyphens: auto !important; }`);
+  }
+  if (options.fontLigatures) {
+    // font-variant-ligatures is the modern, well-supported spelling; the
+    // font-feature-settings form is kept as a fallback for engines that only
+    // honour the latter for non-standard features.
+    typographyRules.push(`${S} { font-variant-ligatures: common-ligatures !important; font-feature-settings: 'liga' 1, 'calt' 1 !important; }`);
+  }
+  const typographyCss = typographyRules.length ? `\n${typographyRules.join('\n')}\n` : '';
+
   // Core document styles ---------------------------------------------------
   const coreStyles = `
 *, *::before, *::after { box-sizing: border-box !important; }
@@ -1530,6 +1606,7 @@ body, ${S} {
   -webkit-font-smoothing: antialiased !important;
   -moz-osx-font-smoothing: grayscale !important;
 }
+${typographyCss}
 ${isViewer && contentWidthCss ? `\n#rendered-md { ${contentWidthCss} }\n` : ''}
 ${S} h1 {
   color: var(--od-h1) !important;

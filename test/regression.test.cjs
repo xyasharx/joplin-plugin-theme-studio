@@ -278,13 +278,13 @@ test('all settings live on one page organized into categories', () => {
   assert.match(source, /registerSection\('themeStudioSection', \{[\s\S]*description: sectionOverview/);
   // Every setting belongs to the single section.
   const sectionMatches = [...source.matchAll(/section: '(themeStudio[A-Za-z]*Section)'/g)].map((m) => m[1]);
-  assert.equal(sectionMatches.length, 25);
+  assert.equal(sectionMatches.length, 37);
   for (const section of sectionMatches) {
     assert.equal(section, 'themeStudioSection', `setting ${section} lives on the single Theme Studio page`);
   }
   // Every setting label is prefixed with its category title (branch hierarchy).
   const labelMatches = [...source.matchAll(/label: settingLabel\('([^']+)', '([^']+)'\)/g)].map((m) => [m[1], m[2]]);
-  assert.equal(labelMatches.length, 25);
+  assert.equal(labelMatches.length, 37);
   const knownCategories = ['appearance', 'typography', 'elements', 'export', 'advanced'];
   for (const [category, label] of labelMatches) {
     assert.ok(knownCategories.includes(category), `label category ${category} is declared`);
@@ -294,4 +294,209 @@ test('all settings live on one page organized into categories', () => {
   for (const title of ['Theme & Appearance', 'Typography', 'Code & Markdown Elements', 'Export', 'Advanced']) {
     assert.match(source, new RegExp(`title: '${title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`), `category ${title} is declared`);
   }
+});
+
+// ------------------------------------------------------------------
+// P2: Additional palettes + palette import/export + custom palette builder
+// ------------------------------------------------------------------
+
+const { generatePalette, validatePalette, parsePaletteJson, exportPalettes, sanitizePaletteName, PALETTE_REQUIRED_VARS } = require('../src/palette.ts');
+
+test('extra community palettes are present with complete variable sets', () => {
+  const expected = ['one-dark-pro', 'rose-pine', 'rose-pine-dawn', 'gruvbox-material-dark', 'gruvbox-material-light', 'nord-night'];
+  for (const key of expected) {
+    assert.ok(themes[key], `theme ${key} is registered`);
+    for (const varName of PALETTE_REQUIRED_VARS) {
+      assert.ok(themes[key].variables[varName], `theme ${key} defines ${varName}`);
+    }
+  }
+});
+
+test('palette pair declarations stay consistent', () => {
+  for (const [key, palette] of Object.entries(themes)) {
+    if (palette.pairWith) {
+      assert.ok(themes[palette.pairWith], `theme ${key} declares a valid pairWith (${palette.pairWith})`);
+    }
+  }
+});
+
+test('generatePalette produces a complete, valid palette from base colors', () => {
+  const palette = generatePalette('My Palette', { bg: '#123456', fg: '#abcdef', accent: '#ff8800' });
+  assert.equal(palette.name, 'My Palette');
+  const result = validatePalette(palette);
+  assert.deepEqual(result.errors, [], `generated palette is valid: ${result.errors.join('; ')}`);
+  assert.equal(palette.variables['--od-bg'], '#123456');
+  assert.equal(palette.variables['--od-fg'], '#abcdef');
+  assert.ok(palette.variables['--od-link']);
+  assert.ok(palette.variables['--od-bg-alt']);
+});
+
+test('sanitizePaletteName produces a stable, URL-safe key', () => {
+  assert.equal(sanitizePaletteName('My Palette'), 'my-palette');
+  assert.equal(sanitizePaletteName('A<B>:C'), 'a-b-c');
+  assert.equal(sanitizePaletteName('   '), '');
+});
+
+test('validatePalette detects missing variables and bad hex values', () => {
+  const base = generatePalette('Bad', { bg: '#123456', fg: '#abcdef', accent: '#ff8800' });
+  const missing = validatePalette({ name: 'x', variables: {} });
+  assert.ok(missing.errors.length > 0);
+
+  const badHex = { name: 'x', variables: { ...base.variables, '--od-bg': 'nope' } };
+  const hexErrors = validatePalette(badHex);
+  assert.ok(hexErrors.errors.some((e) => e.includes('missing or invalid "--od-bg"')));
+});
+
+test('parsePaletteJson accepts formats, rejects garbage', () => {
+  const palette = generatePalette('Importable', { bg: '#123456', fg: '#abcdef', accent: '#ff8800' });
+
+  const asArray = parsePaletteJson(JSON.stringify([palette]));
+  assert.equal(asArray.palettes.length, 1);
+  assert.equal(asArray.palettes[0].name, 'Importable');
+  assert.deepEqual(asArray.errors, []);
+
+  const asObject = parsePaletteJson(JSON.stringify({ palettes: [palette] }));
+  assert.equal(asObject.palettes.length, 1);
+
+  const notJson = parsePaletteJson('not json at all');
+  assert.equal(notJson.palettes.length, 0);
+  assert.ok(notJson.errors.length > 0);
+
+  const badPalette = parsePaletteJson(JSON.stringify([{ name: 'x', variables: {} }]));
+  assert.equal(badPalette.palettes.length, 0);
+  assert.ok(badPalette.errors.length > 0);
+});
+
+test('exportPalettes round-trips through import', () => {
+  const built = [themes['atom-one-dark'], generatePalette('Round Trip', { bg: '#123456', fg: '#abcdef', accent: '#ff8800' })];
+  const json = exportPalettes(built);
+  const parsed = parsePaletteJson(json);
+  assert.equal(parsed.palettes.length, 2);
+  assert.deepEqual(parsed.errors, []);
+  assert.ok(parsed.palettes.some((p) => p.name === themes['atom-one-dark'].name));
+  assert.ok(parsed.palettes.some((p) => p.name === 'Round Trip'));
+});
+
+// ------------------------------------------------------------------
+// P2: Per-note / per-notebook / per-tag theme overrides
+// ------------------------------------------------------------------
+
+const { parseOverrideLines, resolveThemeOverride } = require('../src/overrides.ts');
+
+test('parseOverrideLines parses notebook and tag lines and skips comments', () => {
+  const notebooks = parseOverrideLines('id:notebook1=atom-one-dark\n# a comment\nid:notebook2=rose-pine\n', 'notebook');
+  assert.deepEqual(notebooks.overrides, [
+    { match: 'id', value: 'notebook1', themeKey: 'atom-one-dark', line: 1 },
+    { match: 'id', value: 'notebook2', themeKey: 'rose-pine', line: 3 },
+  ]);
+  assert.deepEqual(notebooks.errors, []);
+
+  const tags = parseOverrideLines('title:work=one-dark-pro\ntitle:personal=gruvbox-material-dark', 'tag');
+  assert.deepEqual(tags.overrides, [
+    { match: 'title', value: 'work', themeKey: 'one-dark-pro', line: 1 },
+    { match: 'title', value: 'personal', themeKey: 'gruvbox-material-dark', line: 2 },
+  ]);
+  assert.deepEqual(tags.errors, []);
+});
+
+test('parseOverrideLines reports malformed lines', () => {
+  const bad = parseOverrideLines('id:notebook1=theme\nnot-a-line\n=theme\n', 'notebook');
+  assert.equal(bad.overrides.length, 1);
+  assert.ok(bad.errors.length >= 2);
+});
+
+test('resolveThemeOverride prefers notebooks, then tags, then default', () => {
+  const context = {
+    notebooks: [{ id: 'nb1', title: 'Notebook One' }],
+    tags: [{ id: 'tag1', title: 'Tagged' }],
+  };
+
+  const notebookMatch = resolveThemeOverride(context, {
+    notebook: [{ match: 'id', value: 'nb1', themeKey: 'rose-pine', line: 1 }],
+    tag: [],
+  }, 'atom-one-dark');
+  assert.equal(notebookMatch.themeKey, 'rose-pine');
+  assert.equal(notebookMatch.source, 'notebook');
+
+  const tagMatch = resolveThemeOverride(context, {
+    notebook: [],
+    tag: [{ match: 'id', value: 'tag1', themeKey: 'one-dark-pro', line: 1 }],
+  }, 'atom-one-dark');
+  assert.equal(tagMatch.themeKey, 'one-dark-pro');
+  assert.equal(tagMatch.source, 'tag');
+
+  const none = resolveThemeOverride(context, { notebook: [], tag: [] }, 'atom-one-dark');
+  assert.equal(none.themeKey, 'atom-one-dark');
+  assert.equal(none.source, 'default');
+
+  // Tag matching also resolves by title.
+  const tagTitle = resolveThemeOverride(context, {
+    notebook: [],
+    tag: [{ match: 'title', value: 'Tagged', themeKey: 'nord-night', line: 1 }],
+  }, 'atom-one-dark');
+  assert.equal(tagTitle.themeKey, 'nord-night');
+});
+
+// ------------------------------------------------------------------
+// P2: Typography micro-tuning
+// ------------------------------------------------------------------
+
+const typographyBase = {
+  themeKey: 'atom-one-dark',
+  direction: 'ltr',
+  fontPreset: 'inter',
+  fontFamily: '',
+  codeFontPreset: 'fira-code',
+  codeFont: '',
+  fontSize: '16px',
+  lineHeight: '1.75',
+  contentMaxWidth: 'full',
+  pdfExportStyle: 'exact',
+  pdfPageSize: 'a4',
+  pdfPageMargin: 'standard',
+  customPdfMargin: '15mm 18mm',
+  customCss: '',
+  headingSizePreset: 'balanced',
+  customHeadingSizes: '1.75em, 1.42em, 1.25em, 1.12em, 1.05em, 1.0em',
+};
+
+test('typography toggles emit the expected CSS rules', () => {
+  const letter = buildThemeCss({ ...typographyBase, letterSpacing: '0.6px' });
+  assert.match(letter, /letter-spacing: 0\.6px !important/);
+
+  const justified = buildThemeCss({ ...typographyBase, textAlign: 'justify' });
+  assert.match(justified, /text-align: justify/);
+
+  const hyphenated = buildThemeCss({ ...typographyBase, hyphenation: true });
+  assert.match(hyphenated, /-webkit-hyphens: auto/);
+  assert.match(hyphenated, /hyphens: auto/);
+
+  const ligatures = buildThemeCss({ ...typographyBase, fontLigatures: true });
+  assert.match(ligatures, /font-variant-ligatures: common-ligatures/);
+  assert.match(ligatures, /font-feature-settings: 'liga' 1,\s*'calt' 1/);
+});
+
+test('typography CSS is not emitted when toggles are off (default output unchanged)', () => {
+  const plain = buildThemeCss({ ...typographyBase });
+  assert.ok(!plain.includes('letter-spacing: '));
+  assert.ok(!plain.includes('text-align: justify'));
+  assert.ok(!plain.includes('hyphens: auto'));
+  assert.ok(!plain.includes('font-variant-ligatures'));
+});
+
+test('runtime palettes are honoured by the viewer CSS', () => {
+  const custom = generatePalette('Runtime', { bg: '#123456', fg: '#abcdef', accent: '#ff8800' });
+  const css = buildThemeCss({ ...typographyBase, themeKey: 'custom' }, 'viewer', { ...themes, custom });
+  assert.match(css, /--od-bg: #123456/);
+  assert.match(css, /--od-fg: #abcdef/);
+});
+
+test('viewer CSS applies the effective per-note theme', () => {
+  const custom = generatePalette('Note Palette', { bg: '#abcdef', fg: '#123456', accent: '#ff8800' });
+  const palettes = { ...themes, custom };
+  const css = buildThemeCss({ ...typographyBase, themeKey: 'atom-one-dark', noteThemeEffective: 'custom' }, 'viewer', palettes);
+  assert.match(css, /--od-bg: #abcdef/);
+  // Effective theme flows through pair resolution too.
+  const schemeCss = buildThemeCss({ ...typographyBase, themeKey: 'atom-one-dark', noteThemeEffective: 'custom', colorSchemeMode: 'system' }, 'viewer', palettes);
+  assert.match(schemeCss, /--od-bg-alt: #a2c4e6/);
 });

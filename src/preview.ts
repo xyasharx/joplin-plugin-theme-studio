@@ -55,9 +55,10 @@ colour palette applied to normal prose.</p>
  * scope the stylesheet targets. The panel webview is a standalone document,
  * so the font @import at the top of the stylesheet loads normally.
  */
-export function buildPreviewHtml(options: StyleOptions): string {
-  const css = buildThemeCss(options, 'viewer');
-  const themeName = (themes[options.themeKey] || themes['atom-one-dark']).name;
+export function buildPreviewHtml(options: StyleOptions, palettes: Record<string, import('./themes').ThemePalette> = themes): string {
+  const css = buildThemeCss(options, 'viewer', palettes);
+  const effectiveKey = options.noteThemeEffective && palettes[options.noteThemeEffective] ? options.noteThemeEffective : options.themeKey;
+  const themeName = (palettes[effectiveKey] || palettes['atom-one-dark'] || themes['atom-one-dark']).name;
   const directionLabel = options.direction === 'rtl' ? 'RTL' : options.direction === 'auto' ? 'Auto BiDi' : 'LTR';
   const schemeLabel = options.colorSchemeMode === 'system' ? 'System' : 'Theme';
 
