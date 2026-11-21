@@ -1,6 +1,16 @@
 const fs = require('node:fs');
 const semver = require('semver');
 
+/**
+ * Builds a GitHub API URL for the repository. The empty-path repository
+ * access check (`get('')`) must NOT append a trailing slash: the
+ * `GET /repos/{owner}/{repo}/` endpoint returns 404 with a trailing slash,
+ * which would be misread as "no repository access".
+ */
+function buildApiUrl(api, repo, path) {
+  return `${api}/repos/${repo}${path ? '/' + path : ''}`;
+}
+
 async function validateRelease({ packageVersion, manifestVersion, lockVersion, lockRootVersion, refType, refName, sha, get }) {
   if (typeof packageVersion !== 'string' || semver.valid(packageVersion) !== packageVersion) {
     throw new Error('package.json must contain a valid, canonical semantic version.');
@@ -41,7 +51,7 @@ async function main() {
   const manifest = read('src/manifest.json');
   const lock = read('package-lock.json');
   const get = async path => {
-    const response = await fetch(`${api}/repos/${repo}/${path}`, {
+    const response = await fetch(buildApiUrl(api, repo, path), {
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
       signal: AbortSignal.timeout(15000),
     });
@@ -57,4 +67,4 @@ async function main() {
 }
 
 if (require.main === module) main().catch(error => { console.error(`Release preflight failed: ${error.message}`); process.exitCode = 1; });
-module.exports = { validateRelease };
+module.exports = { validateRelease, buildApiUrl };

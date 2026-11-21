@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { validateRelease } = require('../scripts/check-release.cjs');
+const { validateRelease, buildApiUrl } = require('../scripts/check-release.cjs');
 
 const sha = 'a'.repeat(40);
 const input = {
@@ -40,4 +40,18 @@ test('tag runs and existing tag targets must match the checked-out version and c
 test('API errors and unrecognizable latest release fail closed', async () => {
   await assert.rejects(validateRelease({ ...input, get: mock({ 'releases/tags/v1.6.0': new Error('API unavailable') }) }), /API unavailable/);
   await assert.rejects(validateRelease({ ...input, get: mock({ 'releases/latest': { tag_name: 'release-final' } }) }), /invalid semantic version/);
+});
+
+test('repository access URL has no trailing slash for the empty path', () => {
+  // GET /repos/{owner}/{repo}/ returns 404 with a trailing slash, which the
+  // validator would misread as "no repository access". The empty-path
+  // repository access check must build the bare repo URL.
+  const api = 'https://api.github.com';
+  const repo = 'octo/hello';
+  assert.equal(buildApiUrl(api, repo, ''), `${api}/repos/${repo}`);
+  assert.doesNotMatch(buildApiUrl(api, repo, ''), /\/$/);
+  // Sub-paths still join with a single slash and keep their suffix.
+  assert.equal(buildApiUrl(api, repo, 'releases/latest'), `${api}/repos/${repo}/releases/latest`);
+  assert.equal(buildApiUrl(api, repo, 'releases/tags/v1.6.0'), `${api}/repos/${repo}/releases/tags/v1.6.0`);
+  assert.equal(buildApiUrl(api, repo, 'git/ref/tags/v1.6.0'), `${api}/repos/${repo}/git/ref/tags/v1.6.0`);
 });
