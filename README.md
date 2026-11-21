@@ -113,6 +113,16 @@ Theme Studio is a modular palette and typography engine for Joplin. It applies u
 
 ---
 
+### Whiteboards (desktop)
+
+On Joplin 3.7 and later, the application shell theme also colors the native
+whiteboard canvas, controls, and uncolored cards. Disable **Theme Application
+Shell** to restore Joplin's whiteboard appearance. Explicit card, group, and
+edge colors are kept intact; their shades are chosen by Joplin based on its own
+light/dark setting, so choose a matching Joplin appearance for best contrast.
+Whiteboard theming depends on Joplin's desktop chrome stylesheet API. It does
+not theme third-party drawing plugins or change saved whiteboard data.
+
 ## ⚙️ Configuration Reference
 
 Access the settings panel under **Tools > Options > Theme Studio** (on Mobile: **Configuration > Plugins > Theme Studio**):

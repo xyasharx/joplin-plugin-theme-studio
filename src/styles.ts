@@ -1086,6 +1086,24 @@ div.joplin-plugin-view iframe {
   background-color: var(--od-bg) !important;
 }
 
+/* Joplin 3.7 whiteboards use these variables for the canvas, cards,
+   controls and rendered Markdown. Scope them to the editor: user-selected
+   card and edge colours are inline and must remain untouched. */
+.whiteboard-editor {
+  --joplin-background-color: var(--od-bg);
+  --joplin-background-color3: var(--od-bg-alt);
+  --joplin-background-color-hover3: var(--od-bg-alt);
+  --joplin-color: var(--od-fg);
+  --joplin-color-faded: var(--od-fg);
+  --joplin-divider-color: var(--od-border);
+  --joplin-code-background-color: var(--od-code-bg);
+  --joplin-code-border-color: var(--od-border);
+  --joplin-code-color: var(--od-fg);
+  --joplin-url-color: var(--od-link);
+  --joplin-search-marker-background-color: var(--od-mark-bg);
+  --joplin-search-marker-color: var(--od-fg);
+}
+
 /* --- 10. App-wide Custom Scrollbars --- */
 /* Joplin exposes the user's "Scrollbar size" setting as --scrollbar-size
    (main.scss); a hard-coded width silently overrode that preference. */
@@ -1114,8 +1132,6 @@ div.joplin-plugin-view iframe {
 // 2b. THIRD-PARTY PLUGIN PANEL (WEBVIEW) THEMING
 // =================================================================
 export function buildPanelCss(options: StyleOptions): string {
-  if (!buildChromeCss(options)) return '';
-
   // A plugin panel is a third-party document. Ship it the palette as custom
   // properties plus the documented --joplin-* variables and a body background,
   // and nothing else. The previous implementation embedded the entire 18 KB

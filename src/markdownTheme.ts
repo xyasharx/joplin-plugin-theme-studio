@@ -34,7 +34,7 @@ function getMemoizedViewerCss(pluginOptions: any): string {
   const customHeadingSizes = readSetting(pluginOptions, 'customHeadingSizes', '1.75em, 1.42em, 1.25em, 1.12em, 1.05em, 1.0em');
 
   // Fast cache key comparison
-  const cacheKey = `${themeKey}|${direction}|${fontPreset}|${fontSize}|${lineHeight}|${fontFamily}|${codeFontPreset}|${codeFont}|${contentMaxWidth}|${pdfExportStyle}|${pdfPageSize}|${pdfPageMargin}|${customPdfMargin}|${headingSizePreset}|${customHeadingSizes}|${customCss}`;
+  const cacheKey = JSON.stringify([themeKey, direction, fontPreset, fontSize, lineHeight, fontFamily, codeFontPreset, codeFont, contentMaxWidth, pdfExportStyle, pdfPageSize, pdfPageMargin, customPdfMargin, headingSizePreset, customHeadingSizes, customCss]);
 
   if (cacheKey !== lastViewerCacheKey || !cachedViewerCss) {
     lastViewerCacheKey = cacheKey;
