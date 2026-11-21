@@ -15,6 +15,11 @@ on:
 permissions:
   contents: write
 
+# Serialize releases so concurrent workflow runs cannot both pass preflight.
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -36,6 +41,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check release version
+        id: vars
+        run: node scripts/check-release.cjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Run regression tests
         run: npm test
 
@@ -49,22 +60,18 @@ jobs:
             exit 1
           fi
 
-      - name: Extract Tag / Version
-        id: vars
-        run: |
-          if [ "${{ github.ref_type }}" = "tag" ]; then
-            TAG="${{ github.ref_name }}"
-          else
-            VERSION=$(node -p "require('./package.json').version")
-            TAG="v$VERSION"
-          fi
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
+      # Recheck immediately before publishing in case a release appeared during the build.
+      - name: Recheck release version
+        run: node scripts/check-release.cjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # 1. Create GitHub Release with the .jpl archive and hash metadata
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.vars.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           name: Theme Studio ${{ steps.vars.outputs.tag }}
           files: |
             publish/*.jpl

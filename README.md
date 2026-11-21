@@ -192,6 +192,20 @@ The build uses TypeScript 7 for type checking and esbuild-loader for transpilati
 Both `npm run build` and `npm run dist` run the type check; the loader does
 not type-check by itself.
 
+### Publishing safely
+
+Before running the **Build & Release** workflow, update the version in
+`package.json`, `package-lock.json` (including its root package), and
+`src/manifest.json`. The workflow refuses existing release tags, versions not
+newer than the latest published release, mismatched version files, and tags
+that do not match the checked-out commit. A failed GitHub API check also stops
+publishing. Local `npm run build` and `npm run dist` do not publish releases.
+
+The check runs in the workflow version at the selected ref: do not manually
+run an older tag whose workflow predates this safeguard. Release workflows are
+serialized, but changes made independently through GitHub's UI or API cannot
+be locked by this workflow.
+
 The compiled archive and hash metadata will be generated in the `publish/` directory:
 - `publish/org.joplin.plugin.theme-studio.jpl`
 - `publish/org.joplin.plugin.theme-studio.json`
