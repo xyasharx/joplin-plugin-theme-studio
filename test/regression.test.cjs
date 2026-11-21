@@ -278,13 +278,13 @@ test('all settings live on one page organized into categories', () => {
   assert.match(source, /registerSection\('themeStudioSection', \{[\s\S]*description: sectionOverview/);
   // Every setting belongs to the single section.
   const sectionMatches = [...source.matchAll(/section: '(themeStudio[A-Za-z]*Section)'/g)].map((m) => m[1]);
-  assert.equal(sectionMatches.length, 37);
+  assert.equal(sectionMatches.length, 38);
   for (const section of sectionMatches) {
     assert.equal(section, 'themeStudioSection', `setting ${section} lives on the single Theme Studio page`);
   }
   // Every setting label is prefixed with its category title (branch hierarchy).
   const labelMatches = [...source.matchAll(/label: settingLabel\('([^']+)', '([^']+)'\)/g)].map((m) => [m[1], m[2]]);
-  assert.equal(labelMatches.length, 37);
+  assert.equal(labelMatches.length, 38);
   const knownCategories = ['appearance', 'typography', 'elements', 'export', 'advanced'];
   for (const [category, label] of labelMatches) {
     assert.ok(knownCategories.includes(category), `label category ${category} is declared`);
@@ -499,4 +499,77 @@ test('viewer CSS applies the effective per-note theme', () => {
   // Effective theme flows through pair resolution too.
   const schemeCss = buildThemeCss({ ...typographyBase, themeKey: 'atom-one-dark', noteThemeEffective: 'custom', colorSchemeMode: 'system' }, 'viewer', palettes);
   assert.match(schemeCss, /--od-bg-alt: #a2c4e6/);
+});
+
+// ------------------------------------------------------------------
+// P3: Mobile density presets + command-palette theme picker
+// ------------------------------------------------------------------
+
+test('mobile density presets scale the mobile font size', () => {
+  const compact = buildThemeCss({ ...typographyBase, mobileDensity: 'compact' }, 'viewer');
+  assert.match(compact, /@media screen and \(max-width: 768px\)\{[^}]*font-size: calc\(16px \* 0\.85\)/);
+
+  const def = buildThemeCss({ ...typographyBase, mobileDensity: 'default' }, 'viewer');
+  assert.match(def, /font-size: calc\(16px \* 1\)/);
+
+  const large = buildThemeCss({ ...typographyBase, mobileDensity: 'large' }, 'viewer');
+  assert.match(large, /font-size: calc\(16px \* 1\.15\)/);
+});
+
+test('mobile density default is a no-op scale of 1', () => {
+  const noDensity = buildThemeCss({ ...typographyBase }, 'viewer');
+  const withDefault = buildThemeCss({ ...typographyBase, mobileDensity: 'default' }, 'viewer');
+  assert.match(noDensity, /font-size: calc\(16px \* 1\)/);
+  assert.match(withDefault, /font-size: calc\(16px \* 1\)/);
+});
+
+test('mobile density follows the configured font size', () => {
+  const css = buildThemeCss({ ...typographyBase, fontSize: '18px', mobileDensity: 'large' }, 'viewer');
+  assert.match(css, /font-size: calc\(18px \* 1\.15\)/);
+});
+
+test('per-theme commands are registered for every runtime palette', async () => {
+  const registered = [];
+  let registration;
+  const handlers = {};
+  // The plugin entry module and its `api` shim are cached from earlier
+  // tests; drop both so this test gets a fresh registration with its own
+  // mock API.
+  delete require.cache[require.resolve('../src/index.ts')];
+  delete require.cache[require.resolve('../api/index.ts')];
+  global.joplin = {
+    plugins: { register: x => { registration = x; }, dataDir: async () => '/tmp' },
+    versionInfo: async () => ({ platform: 'desktop' }),
+    settings: {
+      globalValues: async () => ['en'],
+      registerSection: async () => {},
+      registerSettings: async () => {},
+      onChange: async () => {},
+      values: async () => ({
+        customPalettes: '',
+        customPaletteName: 'Custom',
+        customPaletteBg: '#123456',
+        customPaletteFg: '#abcdef',
+        customPaletteAccent: '#ff8800',
+        theme: 'atom-one-dark',
+      }),
+      setValue: async () => {},
+    },
+    commands: { register: async (c) => { registered.push(c); } },
+    contentScripts: { register: async () => {}, onMessage: async (id, fn) => { handlers[id] = fn; } },
+  };
+  require('../src/index.ts');
+  await registration.onStart();
+  delete global.joplin;
+
+  const themeCommands = registered.filter((c) => c.name.startsWith('themeStudio.useTheme.'));
+  // One command per built-in theme plus the generated custom palette.
+  assert.equal(themeCommands.length, Object.keys(themes).length + 1);
+  for (const cmd of themeCommands) {
+    assert.match(cmd.name, /^themeStudio\.useTheme\./);
+    assert.match(cmd.label, /^Theme Studio: Use /);
+    assert.equal(typeof cmd.execute, 'function');
+  }
+  // The custom palette command is present alongside the built-ins.
+  assert.ok(themeCommands.some((c) => c.name === 'themeStudio.useTheme.custom'));
 });

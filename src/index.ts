@@ -221,6 +221,20 @@ joplin.plugins.register({
         label: settingLabel('typography', 'Font Ligatures'),
         description: 'Enables common typographic ligatures (fi, fl, ffi) in note text via font-variant-ligatures.',
       },
+      'mobileDensity': {
+        value: 'default',
+        type: SettingItemType.String,
+        section: 'themeStudioSection',
+        isEnum: true,
+        public: true,
+        label: settingLabel('typography', 'Mobile Density'),
+        description: 'Font size scale applied on screens under 768px. Compact fits more content per screen; Large improves readability on small displays.',
+        options: {
+          'compact': 'Compact',
+          'default': 'Default',
+          'large': 'Large',
+        },
+      },
       'direction': {
         value: defaultDirection,
         type: SettingItemType.String,
@@ -537,6 +551,7 @@ joplin.plugins.register({
       'textAlign',
       'hyphenation',
       'fontLigatures',
+      'mobileDensity',
       'headingSizePreset',
       'customHeadingSizes',
       'contentMaxWidth',
@@ -607,6 +622,7 @@ joplin.plugins.register({
         textAlign: vals['textAlign'] || 'left',
         hyphenation: vals['hyphenation'] ?? false,
         fontLigatures: vals['fontLigatures'] ?? false,
+        mobileDensity: vals['mobileDensity'] || 'default',
         noteThemeEffective: vals['noteThemeEffective'] || '',
         themeByNotebook: vals['themeByNotebook'] || '',
         themeByTag: vals['themeByTag'] || '',
@@ -859,6 +875,22 @@ joplin.plugins.register({
         await applyCurrentConfig();
       },
     });
+
+    // Per-theme commands (P3): one entry per palette in the runtime registry,
+    // so keyboard-only users can jump straight to a specific theme from the
+    // Command Palette without cycling. The label carries the display name;
+    // the key is kept in the command name for programmatic execution.
+    for (const [themeKey, palette] of Object.entries(runtimeThemes)) {
+      await joplin.commands.register({
+        name: `themeStudio.useTheme.${themeKey}`,
+        label: `Theme Studio: Use ${palette.name}`,
+        iconName: 'fas fa-paint-brush',
+        execute: async () => {
+          await joplin.settings.setValue('theme', themeKey);
+          await applyCurrentConfig();
+        },
+      });
+    }
 
     await joplin.commands.register({
       name: 'themeStudio.toggleShell',
