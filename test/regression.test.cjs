@@ -54,6 +54,46 @@ test('font stacks are sanitized so user input cannot inject CSS rules', () => {
   assert.match(clean, /font-family: 'Lora',\s*Georgia,\s*serif !important/);
 });
 
+test('mobile tables are pinned to their content width so columns never squeeze', () => {
+  const css = buildThemeCss({ ...options, direction: 'ltr' }, 'viewer');
+  // On narrow screens the table must be at least as wide as its unwrapped
+  // content; display:block + overflow-x:auto (base rule) then scrolls it
+  // instead of collapsing columns into a narrow, character-wrapped column.
+  assert.match(css, /#rendered-md table\s*\{\s*min-width:\s*max-content\s*!important/);
+});
+
+test('table cells keep min-content intact and never break everywhere', () => {
+  const css = buildThemeCss({ ...options, direction: 'ltr' }, 'viewer');
+  // The document-level overflow-wrap:anywhere collapses a cell's intrinsic
+  // min-content width to one character and lets the table algorithm squeeze
+  // columns; the table and its cells must opt back into break-word instead.
+  assert.match(css, /#rendered-md table\{[^}]*word-break:\s*normal !important;overflow-wrap:\s*break-word !important/);
+  assert.match(css, /#rendered-md td\{[^}]*word-break:\s*normal !important;overflow-wrap:\s*break-word !important/);
+  assert.doesNotMatch(css, /#rendered-md table\{[^}]*overflow-wrap:\s*anywhere/);
+});
+
+test('table cell alignment follows the configured direction', () => {
+  const rtl = buildThemeCss({ ...options, direction: 'rtl' }, 'viewer');
+  assert.match(rtl, /#rendered-md :is\(th,\s*td\):not\(\[style\*="text-align"\]\)\{text-align:\s*right !important\}/);
+  const ltr = buildThemeCss({ ...options, direction: 'ltr' }, 'viewer');
+  assert.match(ltr, /#rendered-md :is\(th,\s*td\):not\(\[style\*="text-align"\]\)\{text-align:\s*left !important\}/);
+  const auto = buildThemeCss({ ...options, direction: 'auto' }, 'viewer');
+  assert.match(auto, /#rendered-md :is\(th,\s*td\):not\(\[style\*="text-align"\]\)\{text-align:\s*start !important\}/);
+});
+
+test('auto direction applies per-cell bidi detection to table cells', () => {
+  const css = buildThemeCss({ ...options, direction: 'auto' }, 'viewer');
+  assert.match(css, /#rendered-md :is\(p,\s*h1,\s*h2,\s*h3,\s*h4,\s*h5,\s*h6,\s*li,\s*blockquote,\s*dt,\s*dd,\s*th,\s*td\)\{unicode-bidi:\s*plaintext !important/);
+});
+
+test('generated CSS avoids deprecated word-break and overflow-scrolling values', () => {
+  for (const direction of ['ltr', 'rtl', 'auto']) {
+    const css = buildThemeCss({ ...options, direction }, 'viewer');
+    assert.doesNotMatch(css, /word-break:\s*break-word/);
+    assert.doesNotMatch(css, /-webkit-overflow-scrolling/);
+  }
+});
+
 test('viewer cache distinguishes settings containing delimiter characters', () => {
   const content = require('../src/markdownTheme.ts').default({});
   const rules = {};

@@ -1289,7 +1289,7 @@ ${S} [dir="ltr"] table :is(th, td):not([style*="text-align"]) { text-align: left
     const LTR = ':is([dir="ltr"], :dir(ltr))';
     dirRules = `
 body, ${S} { direction: ltr !important; text-align: start !important; }
-${isViewer ? `${S} :is(p, h1, h2, h3, h4, h5, h6, li, blockquote, dt, dd) {
+${isViewer ? `${S} :is(p, h1, h2, h3, h4, h5, h6, li, blockquote, dt, dd, th, td) {
   unicode-bidi: plaintext !important;
   text-align: start !important;
 }` : ''}
@@ -1425,7 +1425,10 @@ body, ${S} {
   font-size: ${safeLength(options.fontSize, '16px')} !important;
   background-color: var(--od-bg) !important;
   color: var(--od-fg) !important;
-  word-break: break-word !important;
+  /* The deprecated value 'word-break: break-word' behaves exactly like
+     'word-break: normal' + 'overflow-wrap: anywhere', so the non-deprecated
+     form is spelled out here. */
+  word-break: normal !important;
   overflow-wrap: anywhere !important;
   -webkit-font-smoothing: antialiased !important;
   -moz-osx-font-smoothing: grayscale !important;
@@ -1536,7 +1539,6 @@ ${PRE} {
   word-break: normal !important;
   word-wrap: normal !important;
   overflow-wrap: normal !important;
-  -webkit-overflow-scrolling: touch !important;
   scrollbar-width: thin !important;
   scrollbar-color: var(--od-scrollbar-thumb) var(--od-scrollbar-track) !important;
 }
@@ -1664,7 +1666,7 @@ ${S} :is(p, li) code {
   white-space: normal !important;
   max-width: 100% !important;
   overflow-wrap: anywhere !important;
-  word-break: break-word !important;
+  word-break: normal !important;
 }
 
 /* Explicit Table Font Inheritance */
@@ -1684,16 +1686,17 @@ ${S} table {
   display: block !important;
   box-sizing: border-box !important;
   overflow-x: auto !important;
-  -webkit-overflow-scrolling: touch !important;
   scrollbar-width: thin !important;
   scrollbar-color: var(--od-scrollbar-thumb) var(--od-scrollbar-track) !important;
   color: var(--od-fg) !important;
   /* Do NOT inherit the document-level overflow-wrap: anywhere /
-     word-break: break-word (see the body rule above). Both make the
-     intrinsic min-content width of a table cell collapse to one character,
-     which lets the automatic table algorithm squeeze a column narrower than
-     its longest word - the "text in a 5-character column" bug. break-word
-     wraps long URLs when needed but leaves min-content intact. */
+     word-break: normal (see the body rule above). The 'anywhere' value makes
+     the intrinsic min-content width of a table cell collapse to one
+     character, which lets the automatic table algorithm squeeze a column
+     narrower than its longest word - the "text in a 5-character column" bug.
+     break-word wraps long URLs when needed but leaves min-content intact. On
+     narrow screens the mobile rule below additionally pins the table to its
+     max-content width so columns can never be squeezed at all. */
   word-break: normal !important;
   overflow-wrap: break-word !important;
 }
@@ -1704,8 +1707,9 @@ ${S} th {
   font-weight: bold !important;
   border: 1px solid var(--od-border) !important;
   padding: 8px 12px !important;
-  /* Headers wrap instead of forcing the whole table past the right edge of
-     the pane (which pushed the last column out of view on wide tables). */
+  /* Headers wrap when the table fits its container; on narrow screens the
+     table is pinned to its max-content width (see the mobile rule below) and
+     scrolls horizontally instead of squeezing columns. */
   white-space: normal !important;
   word-break: normal !important;
   overflow-wrap: break-word !important;
@@ -1735,7 +1739,6 @@ ${S} .mermaid, ${S} div.mermaid, ${S} pre.mermaid {
   direction: ltr !important;
   overflow-x: auto !important;
   overflow-y: hidden !important;
-  -webkit-overflow-scrolling: touch !important;
   scrollbar-width: thin !important;
   background-color: var(--od-mermaid-bg) !important;
   border: 1px solid var(--od-mermaid-border) !important;
@@ -1783,7 +1786,6 @@ ${isViewer ? `
   max-width: 100% !important;
   overflow-x: auto !important;
   overflow-y: hidden !important;
-  -webkit-overflow-scrolling: touch !important;
   box-sizing: border-box !important;
   padding: 6px 0 !important;
 }
@@ -1815,7 +1817,12 @@ ${S} .footnotes {
   ${S} h3 { margin: 16px 0 8px 0 !important; }
   ${S} img { max-height: 420px !important; }
   ${PRE} { font-size: 0.9em !important; padding: 10px 12px !important; }
-  ${S} table { font-size: 0.9em !important; }
+  /* Pin the table to its unwrapped content width: the automatic table
+     algorithm may otherwise squeeze columns below their content when long
+     text is present, collapsing the table into one narrow, character-wrapped
+     column. The base rule's display:block + overflow-x:auto then scrolls it
+     horizontally instead. */
+  ${S} table { min-width: max-content !important; font-size: 0.9em !important; }
   ${S} .mermaid { padding: 14px 8px !important; }
 }
 `;
@@ -1914,7 +1921,7 @@ ${S} .footnotes {
 
   ${PRE} {
     white-space: pre-wrap !important;
-    word-break: break-word !important;
+    word-break: normal !important;
     overflow-wrap: break-word !important;
     overflow: visible !important;
     page-break-inside: avoid !important;
