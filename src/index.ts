@@ -292,7 +292,7 @@ joplin.plugins.register({
       'customCss',
     ];
 
-    async function getAllCurrentValues(): Promise<{ options: StyleOptions; editorEnabled: boolean; shellEnabled: boolean }> {
+    async function getAllCurrentValues(): Promise<{ options: StyleOptions; editorEnabled: boolean; shellEnabled: boolean; version: string }> {
       let vals: Record<string, any> = {};
 
       if (typeof joplin.settings.values === 'function') {
@@ -325,6 +325,7 @@ joplin.plugins.register({
 
       return {
         options,
+        version: makeStyleVersion(vals),
         editorEnabled: vals['enableEditorTheme'] ?? true,
         shellEnabled: vals['themeApplicationShell'] ?? true,
       };
@@ -335,6 +336,10 @@ joplin.plugins.register({
      * a content script, so the script polls this instead of re-downloading the
      * whole stylesheet.
      */
+    function makeStyleVersion(vals: Record<string, any>): string {
+      return JSON.stringify([platform, ...settingKeys.map((k) => vals[k] ?? null)]);
+    }
+
     async function getStyleVersion(): Promise<string> {
       let vals: Record<string, any> = {};
       if (typeof joplin.settings.values === 'function') {
@@ -343,8 +348,7 @@ joplin.plugins.register({
         const results = await Promise.all(settingKeys.map((k) => joplin.settings.value(k)));
         settingKeys.forEach((k, idx) => { vals[k] = results[idx]; });
       }
-      const payload = settingKeys.map((k) => `${k}=${String(vals[k] ?? '')}`).join('\u0001');
-      return `${platform}:${payload}`;
+      return makeStyleVersion(vals);
     }
 
     // Serialise shell writes: a command (immediate refresh) and the debounced
@@ -468,7 +472,7 @@ joplin.plugins.register({
         await syncDesktopChromeFile(config.options, config.shellEnabled);
 
         return {
-          version: await getStyleVersion(),
+          version: config.version,
           editorCss: config.editorEnabled ? buildEditorCss(config.options) : '',
           viewerCss: buildThemeCss(config.options, 'tinymce'), // Rich Text iframe only; the viewer builds its own
           panelCss: !isMobile && config.shellEnabled ? buildPanelCss(config.options) : '',
