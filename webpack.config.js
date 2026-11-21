@@ -53,7 +53,7 @@ module.exports = (env, argv) => {
         alias: { api: path.resolve(__dirname, 'api') },
       },
       module: {
-        rules: [{ test: /\.tsx?$/, use: 'ts-loader', exclude: /node_modules/ }],
+        rules: [{ test: /\.tsx?$/, loader: 'esbuild-loader', options: { target: 'es2018' }, exclude: /node_modules/ }],
       },
       plugins: [
         new CopyPlugin({
@@ -97,7 +97,7 @@ module.exports = (env, argv) => {
         extensions: ['.ts', '.tsx', '.js'],
       },
       module: {
-        rules: [{ test: /\.tsx?$/, use: 'ts-loader', exclude: /node_modules/ }],
+        rules: [{ test: /\.tsx?$/, loader: 'esbuild-loader', options: { target: 'es2018' }, exclude: /node_modules/ }],
       },
     };
   }

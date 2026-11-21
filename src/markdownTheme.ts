@@ -79,8 +79,7 @@ function isRtlContent(str: string): boolean {
   return match ? RTL_SCRIPT.test(match[0]) : false;
 }
 
-module.exports = {
-  default: function (_context: any) {
+export default function (_context: any) {
     return {
       plugin: function (markdownIt: any, pluginOptions: any) {
         // Explicitly stamp dir="rtl" or dir="ltr" based on first strong character
@@ -149,5 +148,4 @@ module.exports = {
         });
       },
     };
-  },
-};
+}

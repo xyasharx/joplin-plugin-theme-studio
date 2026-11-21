@@ -323,8 +323,7 @@ function installGlobalHooks(runtime: ThemeStudioRuntime): void {
   runtime.hooksInstalled = true;
 }
 
-module.exports = {
-  default: function (context: any) {
+export default function (context: any) {
     const runtime = getRuntime();
 
     // Always talk through the newest editor's channel.
@@ -336,5 +335,4 @@ module.exports = {
         installGlobalHooks(runtime);
       },
     };
-  },
-};
+}

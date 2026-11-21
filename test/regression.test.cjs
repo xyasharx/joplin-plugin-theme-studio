@@ -4,10 +4,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 process.env.NODE_PATH = [path.resolve(__dirname, '..'), process.env.NODE_PATH].filter(Boolean).join(path.delimiter);
 require('node:module').Module._initPaths();
-const ts = require('typescript');
+const { transformSync } = require('esbuild');
 require.extensions['.ts'] = (module, filename) => {
   const source = fs.readFileSync(filename, 'utf8');
-  module._compile(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText, filename);
+  module._compile(transformSync(source, { loader: 'ts', format: 'cjs', target: 'es2018' }).code, filename);
 };
 const { buildChromeCss } = require('../src/styles.ts');
 const { themes } = require('../src/themes.ts');
@@ -50,4 +50,28 @@ test('style payload version corresponds to the settings used to build it', async
   assert.notEqual(result.version, next.version);
   assert.ok(result.viewerCss.includes(themes['atom-one-dark'].variables['--od-bg']));
   delete global.joplin;
+});
+
+test('production bundles expose Joplin content script entry points', async () => {
+  const markdown = require('../dist/markdownTheme.js');
+  const editor = require('../dist/codeMirrorTheme.js');
+  assert.equal(typeof markdown.default, 'function');
+  assert.equal(typeof editor.default, 'function');
+  const rules = {};
+  markdown.default({}).plugin({ core: { ruler: { push: (name, fn) => { rules[name] = fn; } } } }, { settingValue: () => undefined });
+  const state = { tokens: [], Token: class {} };
+  rules.theme_studio_injector(state);
+  assert.match(state.tokens[0].content, /joplin-theme-studio-styles/);
+  assert.equal(typeof editor.default({ postMessage: async () => null }).plugin, 'function');
+});
+
+test('production main bundle registers with the Joplin API', async () => {
+  let registration;
+  global.joplin = { plugins: { register: value => { registration = value; } } };
+  try {
+    require('../dist/index.js');
+    assert.equal(typeof registration.onStart, 'function');
+  } finally {
+    delete global.joplin;
+  }
 });

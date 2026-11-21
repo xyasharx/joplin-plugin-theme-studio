@@ -178,12 +178,19 @@ When **Layout Direction** is set to `RTL`, left-to-right code explanations, Engl
 git clone https://github.com/xyasharx/joplin-plugin-theme-studio.git
 cd joplin-plugin-theme-studio
 
-# 2. Install dependencies
-npm install
+# 2. Install locked dependencies
+npm ci
 
-# 3. Compile TypeScript and build .jpl bundle
+# 3. Type-check, build, and run regression tests
+npm test
+
+# 4. Build the .jpl bundle
 npm run dist
 ```
+
+The build uses TypeScript 7 for type checking and esbuild-loader for transpilation.
+Both `npm run build` and `npm run dist` run the type check; the loader does
+not type-check by itself.
 
 The compiled archive and hash metadata will be generated in the `publish/` directory:
 - `publish/org.joplin.plugin.theme-studio.jpl`
