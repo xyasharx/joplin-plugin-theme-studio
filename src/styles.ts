@@ -1,4 +1,4 @@
-import { themes, ThemePalette } from './themes';
+import { themes, schemePairs, ThemePalette } from './themes';
 
 export interface StyleOptions {
   themeKey: string;
@@ -17,6 +17,19 @@ export interface StyleOptions {
   pdfPageMargin?: string;
   customPdfMargin?: string;
   customCss?: string;
+  // System color-scheme mode: 'theme' keeps the selected palette in every
+  // context; 'system' swaps in the light/dark counterpart via
+  // @media (prefers-color-scheme). Themes without a counterpart keep their
+  // own look in both schemes.
+  colorSchemeMode?: string;
+  // Per-element style toggles. When false, a neutralizer block resets the
+  // element to plain typography; user customCss still wins over neutralizers.
+  styleBlockquotes?: boolean;
+  styleTables?: boolean;
+  styleImages?: boolean;
+  styleHeadings?: boolean;
+  styleLinks?: boolean;
+  styleCodeBlocks?: boolean;
 }
 
 /**
@@ -151,6 +164,89 @@ function buildCssVariables(theme: ThemePalette, extra = ''): string {
   css += extra;
   css += '}\n';
   return css;
+}
+
+/**
+ * Palette variables for the active color-scheme mode. In 'system' mode the
+ * base :root keeps the selected theme as the fallback and two
+ * @media (prefers-color-scheme) blocks swap in the dark/light counterpart.
+ * Every rule in the stylesheet reads var(--od-*), so the whole sheet follows
+ * the OS preference. `color-scheme` is declared on each block so the browser
+ * paints native UI (scrollbars, form controls) in the matching scheme.
+ */
+function buildSchemeCssVariables(options: StyleOptions, extra = ''): string {
+  const selected = resolveTheme(options);
+  const baseScheme = selected.isDark ? 'dark' : 'light';
+  let css = buildCssVariables(selected, `  color-scheme: ${baseScheme};\n${extra}`);
+
+  if (options.colorSchemeMode !== 'system') return css;
+
+  const pair = schemePairs[options.themeKey];
+  // A self-paired theme (dark === light, e.g. Nord) has no counterpart to
+  // switch to, so no media blocks are emitted and the palette stays put.
+  if (!pair || pair.dark === pair.light) return css;
+
+  const darkTheme = themes[pair.dark] || selected;
+  const lightTheme = themes[pair.light] || selected;
+  css += `\n@media (prefers-color-scheme: dark) {\n${buildCssVariables(darkTheme, '  color-scheme: dark;\n')}\n}\n`;
+  css += `@media (prefers-color-scheme: light) {\n${buildCssVariables(lightTheme, '  color-scheme: light;\n')}\n}\n`;
+  return css;
+}
+
+/**
+ * Syntax-token variables follow the same scheme switching as the palette:
+ * each @media block recomputes the contrast-adjusted token colours for its
+ * theme so code blocks stay readable in both schemes.
+ */
+function buildSchemeTokenVariables(options: StyleOptions): string {
+  const selected = resolveTheme(options);
+  let css = buildTokenVariables(selected);
+
+  if (options.colorSchemeMode !== 'system') return css;
+
+  const pair = schemePairs[options.themeKey];
+  if (!pair || pair.dark === pair.light) return css;
+
+  const darkTheme = themes[pair.dark] || selected;
+  const lightTheme = themes[pair.light] || selected;
+  css += `\n@media (prefers-color-scheme: dark) {\n${buildTokenVariables(darkTheme)}\n}\n`;
+  css += `@media (prefers-color-scheme: light) {\n${buildTokenVariables(lightTheme)}\n}\n`;
+  return css;
+}
+
+/**
+ * Per-element style toggles. A disabled toggle appends a neutralizer block
+ * after the base stylesheet: same selectors and !important as the base rules,
+ * so the later source position wins and the element falls back to plain
+ * typography. User customCss is appended after the neutralizers, so it can
+ * still re-style anything.
+ */
+function buildElementOverrides(options: StyleOptions, S: string): string {
+  const rules: string[] = [];
+
+  if (options.styleBlockquotes === false) {
+    rules.push(`${S} blockquote { border: 0 !important; background-color: transparent !important; }`);
+  }
+  if (options.styleTables === false) {
+    rules.push(`${S} table, ${S} th, ${S} td { border: 0 !important; }`);
+    rules.push(`${S} tr:nth-child(even), ${S} tr:nth-child(odd) { background-color: transparent !important; }`);
+  }
+  if (options.styleImages === false) {
+    rules.push(`${S} img { box-shadow: none !important; border-radius: 0 !important; max-height: none !important; }`);
+  }
+  if (options.styleHeadings === false) {
+    rules.push(`${S} :is(h1, h2, h3, h4, h5, h6) { color: var(--od-fg) !important; }`);
+    rules.push(`${S} h1 { border-bottom: 0 !important; }`);
+    rules.push(`${S} h2 { border-left: 0 !important; border-right: 0 !important; padding-left: 0 !important; padding-right: 0 !important; }`);
+  }
+  if (options.styleLinks === false) {
+    rules.push(`${S} a, ${S} a:hover, ${S} a[href^=":/"], ${S} a[href^=":/"]:hover { color: var(--od-fg) !important; text-decoration: none !important; }`);
+  }
+  if (options.styleCodeBlocks === false) {
+    rules.push(`${S} pre:not(.mermaid):not(.joplin-source), ${S} code { background-color: transparent !important; border: 0 !important; }`);
+  }
+
+  return rules.length ? `\n/* Element style toggles */\n${rules.join('\n')}\n` : '';
 }
 
 // =================================================================
@@ -311,7 +407,7 @@ function resolveFonts(options: StyleOptions) {
 export function buildEditorCss(options: StyleOptions): string {
   const selectedTheme = resolveTheme(options);
   const { fontImport, resolvedFont, resolvedCodeFont } = resolveFonts(options);
-  const cssVariables = buildCssVariables(selectedTheme);
+  const cssVariables = buildSchemeCssVariables(options);
 
   let dirCss = '';
   if (options.direction === 'rtl') {
@@ -459,8 +555,8 @@ export function buildChromeCss(options: StyleOptions): string {
   // applied to the text elements themselves. A font set on the container is
   // only inherited, and inheritance always loses to a direct declaration - so
   // redefining the variable they read is what actually changes the UI font.
-  const cssVariables = buildCssVariables(
-    selectedTheme,
+  const cssVariables = buildSchemeCssVariables(
+    options,
     `  --joplin-font-family: ${resolvedFont} !important;\n  --od-active-accent: inset 0 0 0 0 transparent;\n`
   );
 
@@ -1158,14 +1254,12 @@ export function buildPanelCss(options: StyleOptions): string {
   // button { color: … !important }`, `svg, path { fill: … !important }`,
   // `*, *::before, *::after { border-color: … !important }`) which repainted
   // every icon, semantic colour and border inside Outline, Note Tabs, etc.
-  const palette = themes[options.themeKey] || themes['atom-one-dark'];
-  const vars = Object.entries(palette.variables)
-    .map(([name, value]) => `  ${name}: ${value};`)
-    .join('\n');
+  const schemeVars = buildSchemeCssVariables(options, `  --od-active-accent: inset 0 0 0 0 transparent;\n`);
 
-  return `:root {
-${vars}
-  --joplin-background-color: var(--od-bg) !important;
+  // The --joplin-* mappings reference var(--od-*) and therefore follow the
+  // active scheme automatically; they only need to exist once, in the base
+  // :root block.
+  const joplinVars = `  --joplin-background-color: var(--od-bg) !important;
   --joplin-background-color-transparent30: var(--od-selection) !important;
   --joplin-background-color-hover3: var(--od-bg-alt) !important;
   --joplin-color: var(--od-fg) !important;
@@ -1173,7 +1267,10 @@ ${vars}
   --joplin-divider-color: var(--od-border) !important;
   --joplin-scrollbar-thumb-color: var(--od-scrollbar-thumb) !important;
   --joplin-scrollbar-color-hover: var(--od-scrollbar-hover) !important;
-}
+`;
+
+  return `${schemeVars}:root {
+${joplinVars}}
 body {
   background-color: var(--od-bg) !important;
   color: var(--od-fg) !important;
@@ -1198,10 +1295,10 @@ export function buildThemeCss(options: StyleOptions, target: CssTarget = 'viewer
   const S = isViewer ? '#rendered-md' : 'body#tinymce';
 
   const selectedTheme = resolveTheme(options);
-  const tokenVariables = buildTokenVariables(selectedTheme);
+  const tokenVariables = buildSchemeTokenVariables(options);
   const { fontImport, resolvedFont, resolvedCodeFont } = resolveFonts(options);
   const headingSizes = resolveHeadingSizes(options);
-  const cssVariables = buildCssVariables(selectedTheme, `  --mermaid-font-family: ${resolvedFont} !important;\n`);
+  const cssVariables = buildSchemeCssVariables(options, `  --mermaid-font-family: ${resolvedFont} !important;\n`);
 
   // Directional rules ------------------------------------------------------
   let dirRules = '';
@@ -1990,7 +2087,9 @@ ${S} .footnotes {
   // would end the block and spill the rest of the stylesheet into the note body.
   const customCss = (options.customCss || '').replace(/<\/?style[^>]*>/gi, '').trim();
 
-  const baseCss = compactCss(`${fontImport}\n${cssVariables}${tokenVariables}\n${dirRules}\n${coreStyles}${printStyles}${scrollbarStyles}`);
+  const elementOverrides = buildElementOverrides(options, S);
+
+  const baseCss = compactCss(`${fontImport}\n${cssVariables}${tokenVariables}\n${dirRules}\n${coreStyles}${printStyles}${scrollbarStyles}${elementOverrides}`);
 
   return customCss ? `${baseCss}\n/* User custom CSS */\n${customCss}` : baseCss;
 }
