@@ -146,7 +146,7 @@ not theme third-party drawing plugins or change saved whiteboard data.
 
 ## ⚙️ Configuration Reference
 
-All settings live on a single plugin page under **Tools > Options > Theme Studio** (on Mobile: **Configuration > Plugins > Theme Studio**). The page is organized into five categories — **Theme & Appearance**, **Typography**, **Code & Markdown Elements**, **Export** and **Advanced** — with every setting labelled `Category — Setting` so each row clearly shows its branch in the hierarchy.
+All settings live on a single plugin page under **Tools > Options > Theme Studio** (on Mobile: **Configuration > Plugins > Theme Studio**). The page is organized into five native, collapsible sections — **Theme & Appearance**, **Typography**, **Code & Markdown Elements**, **Export** and **Advanced** — each with its own icon and description, so related settings are visually grouped instead of listed as a flat list.
 
 ### Theme & Appearance
 
