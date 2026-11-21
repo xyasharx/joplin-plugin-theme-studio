@@ -1,4 +1,6 @@
-import { buildThemeCss } from './styles';
+import { buildThemeCss, StyleOptions } from './styles';
+import { themes, ThemePalette } from './themes';
+import { generatePalette, parsePaletteJson, sanitizePaletteName } from './palette';
 
 let cachedViewerCss = '';
 let lastViewerCacheKey = '';
@@ -15,8 +17,39 @@ function readSetting(pluginOptions: any, key: string, fallback: string): string 
   return fallback;
 }
 
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+
+/**
+ * Build the runtime palette map available to the viewer. The content script
+ * cannot call the Joplin data API, so it reconstructs the same registry the
+ * main process uses: built-in themes plus the generated custom palette and
+ * the palettes imported via the `customPalettes` setting.
+ */
+function buildViewerPalettes(pluginOptions: any): Record<string, ThemePalette> {
+  const palettes: Record<string, ThemePalette> = { ...themes };
+
+  const customPalettesJson = readSetting(pluginOptions, 'customPalettes', '');
+  if (customPalettesJson.trim()) {
+    const parsed = parsePaletteJson(customPalettesJson);
+    for (const palette of parsed.palettes) {
+      palettes[`imported:${sanitizePaletteName(palette.name) || 'palette'}`] = palette;
+    }
+  }
+
+  const bg = readSetting(pluginOptions, 'customPaletteBg', '');
+  const fg = readSetting(pluginOptions, 'customPaletteFg', '');
+  const accent = readSetting(pluginOptions, 'customPaletteAccent', '');
+  if (HEX_COLOR.test(bg) && HEX_COLOR.test(fg) && HEX_COLOR.test(accent)) {
+    const name = readSetting(pluginOptions, 'customPaletteName', 'Custom Palette') || 'Custom Palette';
+    palettes['custom'] = generatePalette(name, { bg, fg, accent });
+  }
+
+  return palettes;
+}
+
 function getMemoizedViewerCss(pluginOptions: any): string {
   const themeKey = readSetting(pluginOptions, 'theme', 'atom-one-dark');
+  const noteThemeEffective = readSetting(pluginOptions, 'noteThemeEffective', '');
   const direction = readSetting(pluginOptions, 'direction', 'ltr');
   const fontPreset = readSetting(pluginOptions, 'fontPreset', 'inter');
   const fontFamily = readSetting(pluginOptions, 'fontFamily', '');
@@ -32,14 +65,27 @@ function getMemoizedViewerCss(pluginOptions: any): string {
   const customCss = readSetting(pluginOptions, 'customCss', '');
   const headingSizePreset = readSetting(pluginOptions, 'headingSizePreset', 'balanced');
   const customHeadingSizes = readSetting(pluginOptions, 'customHeadingSizes', '1.75em, 1.42em, 1.25em, 1.12em, 1.05em, 1.0em');
+  const letterSpacing = readSetting(pluginOptions, 'letterSpacing', '');
+  const textAlign = readSetting(pluginOptions, 'textAlign', 'left');
+  const hyphenation = readSetting(pluginOptions, 'hyphenation', 'false');
+  const fontLigatures = readSetting(pluginOptions, 'fontLigatures', 'false');
+  const customPalettesJson = readSetting(pluginOptions, 'customPalettes', '');
+  const customPaletteBg = readSetting(pluginOptions, 'customPaletteBg', '');
+  const customPaletteFg = readSetting(pluginOptions, 'customPaletteFg', '');
+  const customPaletteAccent = readSetting(pluginOptions, 'customPaletteAccent', '');
 
   // Fast cache key comparison
-  const cacheKey = JSON.stringify([themeKey, direction, fontPreset, fontSize, lineHeight, fontFamily, codeFontPreset, codeFont, contentMaxWidth, pdfExportStyle, pdfPageSize, pdfPageMargin, customPdfMargin, headingSizePreset, customHeadingSizes, customCss]);
+  const cacheKey = JSON.stringify([
+    themeKey, noteThemeEffective, direction, fontPreset, fontSize, lineHeight, fontFamily, codeFontPreset, codeFont,
+    contentMaxWidth, pdfExportStyle, pdfPageSize, pdfPageMargin, customPdfMargin, headingSizePreset, customHeadingSizes, customCss,
+    letterSpacing, textAlign, hyphenation, fontLigatures, customPalettesJson, customPaletteBg, customPaletteFg, customPaletteAccent,
+  ]);
 
   if (cacheKey !== lastViewerCacheKey || !cachedViewerCss) {
     lastViewerCacheKey = cacheKey;
-    cachedViewerCss = buildThemeCss({
+    const options: StyleOptions = {
       themeKey,
+      noteThemeEffective,
       direction,
       fontPreset,
       fontFamily,
@@ -55,7 +101,12 @@ function getMemoizedViewerCss(pluginOptions: any): string {
       headingSizePreset,
       customHeadingSizes,
       customCss,
-    });
+      letterSpacing,
+      textAlign,
+      hyphenation: hyphenation === 'true',
+      fontLigatures: fontLigatures === 'true',
+    };
+    cachedViewerCss = buildThemeCss(options, 'viewer', buildViewerPalettes(pluginOptions));
   }
 
   return cachedViewerCss;

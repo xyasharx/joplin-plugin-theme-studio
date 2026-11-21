@@ -1,8 +1,10 @@
 import joplin from 'api';
 import { ContentScriptType, SettingItemType } from 'api/types';
-import { buildEditorCss, buildThemeCss, buildChromeCss, buildPanelCss, StyleOptions } from './styles';
-import { themes } from './themes';
+import { buildEditorCss, buildThemeCss, buildChromeCss, buildPanelCss, StyleOptions, PaletteMap } from './styles';
+import { themes, ThemePalette } from './themes';
 import { buildPreviewHtml } from './preview';
+import { generatePalette, parsePaletteJson, exportPalettes, sanitizePaletteName } from './palette';
+import { parseOverrideLines, resolveThemeOverride, NoteContext } from './overrides';
 
 joplin.plugins.register({
   onStart: async function () {
@@ -75,39 +77,149 @@ joplin.plugins.register({
       description: sectionOverview,
     });
 
+    // ---------------------------------------------------------------------
+    // Runtime palette registry (P2: palette builder + import/export).
+    //
+    // Built-in themes live in themes.ts. On top of them the plugin exposes:
+    //  - the generated "custom" palette, derived from three base colours,
+    //  - palettes imported from JSON (stored in the `customPalettes` setting).
+    // The registry is the single source of truth for style builds, the theme
+    // selector and palette export.
+    // ---------------------------------------------------------------------
+    const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+
+    function buildCustomPalette(vals: Record<string, any>): ThemePalette | null {
+      const bg = String(vals['customPaletteBg'] || '');
+      const fg = String(vals['customPaletteFg'] || '');
+      const accent = String(vals['customPaletteAccent'] || '');
+      if (!HEX_COLOR.test(bg) || !HEX_COLOR.test(fg) || !HEX_COLOR.test(accent)) return null;
+      const name = String(vals['customPaletteName'] || 'Custom Palette').trim() || 'Custom Palette';
+      return generatePalette(name, { bg, fg, accent });
+    }
+
+    let runtimeThemes: Record<string, ThemePalette> = { ...themes };
+
+    function rebuildRuntimeThemes(customPalettesJson: string): { imported: ThemePalette[]; errors: string[] } {
+      const next: Record<string, ThemePalette> = { ...themes };
+      const imported: ThemePalette[] = [];
+      const errors: string[] = [];
+
+      if (customPalettesJson && customPalettesJson.trim()) {
+        const parsed = parsePaletteJson(customPalettesJson);
+        errors.push(...parsed.errors);
+        for (const palette of parsed.palettes) {
+          const key = `imported:${sanitizePaletteName(palette.name) || 'palette'}`;
+          next[key] = palette;
+          imported.push(palette);
+        }
+      }
+
+      runtimeThemes = next;
+      return { imported, errors };
+    }
+
     await joplin.settings.registerSettings({
-      'theme': {
-        value: 'atom-one-dark',
+      'customPalettes': {
+        value: '',
+        type: SettingItemType.String,
+        section: 'themeStudioSection',
+        public: true,
+        label: settingLabel('advanced', 'Imported Palettes (JSON)'),
+        description: 'Palettes imported via the "Import palettes from clipboard" command, stored as JSON. Each entry is { "name", "isDark", "variables": { ... } } or { "name", "base": { "bg", "fg", "accent" } }.',
+      },
+      'customPaletteName': {
+        value: 'Custom Palette',
+        type: SettingItemType.String,
+        section: 'themeStudioSection',
+        public: true,
+        label: settingLabel('advanced', 'Custom Palette Name'),
+        description: 'Display name of the generated custom palette.',
+      },
+      'customPaletteBg': {
+        value: '#1e1e2e',
+        type: SettingItemType.String,
+        section: 'themeStudioSection',
+        public: true,
+        label: settingLabel('advanced', 'Custom Palette Background'),
+        description: 'Base background colour (#RRGGBB) for the generated custom palette.',
+      },
+      'customPaletteFg': {
+        value: '#cdd6f4',
+        type: SettingItemType.String,
+        section: 'themeStudioSection',
+        public: true,
+        label: settingLabel('advanced', 'Custom Palette Foreground'),
+        description: 'Base text colour (#RRGGBB) for the generated custom palette.',
+      },
+      'customPaletteAccent': {
+        value: '#89b4fa',
+        type: SettingItemType.String,
+        section: 'themeStudioSection',
+        public: true,
+        label: settingLabel('advanced', 'Custom Palette Accent'),
+        description: 'Base accent colour (#RRGGBB); the heading scale and links are derived from it.',
+      },
+      'themeByNotebook': {
+        value: '',
+        type: SettingItemType.String,
+        section: 'themeStudioSection',
+        public: true,
+        label: settingLabel('appearance', 'Per-Notebook Theme Overrides'),
+        description: 'One mapping per line: "id:<notebookId>=<themeKey>" or "title:<Notebook Title>=<themeKey>". The active note uses the first matching notebook in its chain; otherwise the default theme applies.',
+      },
+      'themeByTag': {
+        value: '',
+        type: SettingItemType.String,
+        section: 'themeStudioSection',
+        public: true,
+        label: settingLabel('appearance', 'Per-Tag Theme Overrides'),
+        description: 'One mapping per line: "id:<tagId>=<themeKey>" or "title:<Tag Title>=<themeKey>". Applied when the active note matches a tag and no notebook override matched.',
+      },
+      'noteThemeEffective': {
+        value: '',
+        type: SettingItemType.String,
+        section: 'themeStudioSection',
+        public: true,
+        advanced: true,
+        label: settingLabel('appearance', 'Active Note Theme (auto-managed)'),
+        description: 'Internal: the theme resolved for the currently selected note from the per-notebook/per-tag overrides. Updated automatically; leave empty to use the selected theme.',
+      },
+      'letterSpacing': {
+        value: '',
+        type: SettingItemType.String,
+        section: 'themeStudioSection',
+        public: true,
+        label: settingLabel('typography', 'Letter Spacing'),
+        description: 'Tracking applied to note text (e.g. 0.5px, 0.02em). Empty keeps the default spacing.',
+      },
+      'textAlign': {
+        value: 'left',
         type: SettingItemType.String,
         section: 'themeStudioSection',
         isEnum: true,
         public: true,
-        label: settingLabel('appearance', 'Color Theme'),
-        description: 'Choose your desired color scheme.',
+        label: settingLabel('typography', 'Paragraph Alignment'),
+        description: 'Paragraph text alignment for notes.',
         options: {
-          'atom-one-dark': 'Atom One Dark',
-          'atom-one-light': 'Atom One Light',
-          'tokyo-night': 'Tokyo Night',
-          'tokyo-night-storm': 'Tokyo Night Storm',
-          'everforest-dark': 'Everforest Dark',
-          'everforest-light': 'Everforest Light',
-          'catppuccin-mocha': 'Catppuccin Mocha',
-          'catppuccin-latte': 'Catppuccin Latte',
-          'nord': 'Nord',
-          'dracula': 'Dracula',
-          'gruvbox-dark': 'Gruvbox Dark',
-          'gruvbox-light': 'Gruvbox Light',
-          'solarized-dark': 'Solarized Dark',
-          'solarized-light': 'Solarized Light',
-          'github-dark': 'GitHub Dark',
-          'github-light': 'GitHub Light',
-          'tomorrow-night': 'Tomorrow Night',
-          'tomorrow': 'Tomorrow',
-          'ayu-dark': 'Ayu Dark',
-          'ayu-light': 'Ayu Light',
-          'monokai': 'Monokai',
-          'synthwave-84': "Synthwave '84",
+          'left': 'Left (Default)',
+          'justify': 'Justify',
         },
+      },
+      'hyphenation': {
+        value: false,
+        type: SettingItemType.Bool,
+        section: 'themeStudioSection',
+        public: true,
+        label: settingLabel('typography', 'Hyphenation'),
+        description: 'Enables automatic hyphenation of note paragraphs (requires a browser with hyphenation support and a matching note language).',
+      },
+      'fontLigatures': {
+        value: false,
+        type: SettingItemType.Bool,
+        section: 'themeStudioSection',
+        public: true,
+        label: settingLabel('typography', 'Font Ligatures'),
+        description: 'Enables common typographic ligatures (fi, fl, ffi) in note text via font-variant-ligatures.',
       },
       'direction': {
         value: defaultDirection,
@@ -370,6 +482,42 @@ joplin.plugins.register({
       },
     });
 
+    // The theme selector's options depend on the imported palettes, which are
+    // stored in the `customPalettes` setting registered above. Read them now
+    // and register the theme setting with the full, dynamic option list.
+    const paletteVals = typeof joplin.settings.values === 'function'
+      ? await joplin.settings.values(['customPalettes'])
+      : {};
+    const importedAtStartup = rebuildRuntimeThemes(String((paletteVals as any)['customPalettes'] || ''));
+    if (importedAtStartup.errors.length) {
+      console.warn('[Theme Studio] Could not load some imported palettes:', importedAtStartup.errors.join('; '));
+    }
+    const builderVals = typeof joplin.settings.values === 'function'
+      ? await joplin.settings.values(['customPaletteName', 'customPaletteBg', 'customPaletteFg', 'customPaletteAccent'])
+      : {};
+    const customPalette = buildCustomPalette(builderVals as any);
+    if (customPalette) {
+      runtimeThemes['custom'] = customPalette;
+    }
+
+    const themeOptions: Record<string, string> = {};
+    for (const [key, palette] of Object.entries(runtimeThemes)) {
+      themeOptions[key] = palette.name;
+    }
+
+    await joplin.settings.registerSettings({
+      'theme': {
+        value: 'atom-one-dark',
+        type: SettingItemType.String,
+        section: 'themeStudioSection',
+        isEnum: true,
+        public: true,
+        label: settingLabel('appearance', 'Color Theme'),
+        description: 'Choose your desired color scheme. The "custom" palette is generated from the base colours below; imported palettes appear after the built-in ones.',
+        options: themeOptions,
+      },
+    });
+
     const settingKeys = [
       // Theme & Appearance
       'theme',
@@ -377,11 +525,18 @@ joplin.plugins.register({
       'enableEditorTheme',
       'themeApplicationShell',
       'colorSchemeMode',
+      'themeByNotebook',
+      'themeByTag',
+      'noteThemeEffective',
       // Typography
       'fontPreset',
       'fontFamily',
       'fontSize',
       'lineHeight',
+      'letterSpacing',
+      'textAlign',
+      'hyphenation',
+      'fontLigatures',
       'headingSizePreset',
       'customHeadingSizes',
       'contentMaxWidth',
@@ -401,6 +556,11 @@ joplin.plugins.register({
       'customPdfMargin',
       // Advanced
       'customCss',
+      'customPalettes',
+      'customPaletteName',
+      'customPaletteBg',
+      'customPaletteFg',
+      'customPaletteAccent',
     ];
 
     /** Reads all plugin settings in one round-trip (or via `value()` on APIs that lack `values()`). */
@@ -443,6 +603,13 @@ joplin.plugins.register({
         styleHeadings: vals['styleHeadings'] ?? true,
         styleLinks: vals['styleLinks'] ?? true,
         styleCodeBlocks: vals['styleCodeBlocks'] ?? true,
+        letterSpacing: vals['letterSpacing'] || '',
+        textAlign: vals['textAlign'] || 'left',
+        hyphenation: vals['hyphenation'] ?? false,
+        fontLigatures: vals['fontLigatures'] ?? false,
+        noteThemeEffective: vals['noteThemeEffective'] || '',
+        themeByNotebook: vals['themeByNotebook'] || '',
+        themeByTag: vals['themeByTag'] || '',
       };
 
       return {
@@ -475,7 +642,7 @@ joplin.plugins.register({
         if (isMobile) return;
         try {
           if (joplin.window && typeof (joplin.window as any).loadChromeCssFile === 'function') {
-            const content = enabled ? buildChromeCss(options) : '';
+            const content = enabled ? buildChromeCss(options, runtimeThemes) : '';
             if (content === lastWrittenChromeCss) {
               return;
             }
@@ -500,9 +667,115 @@ joplin.plugins.register({
       return chromeSyncChain;
     }
 
+    // Per-note theme overrides (P2) -----------------------------------------
+    // The active note's notebook chain and tags are resolved through the
+    // Joplin workspace/data APIs and matched against the per-notebook and
+    // per-tag override settings. The resolved palette is published in the
+    // internal `noteThemeEffective` setting, which the Markdown viewer reads
+    // when it builds its stylesheet (content scripts cannot call the data
+    // API, so the main process does the resolution).
+    const noteContextCache = new Map<string, { context: NoteContext; ts: number }>();
+    const NOTE_CONTEXT_CACHE_MAX = 100;
+    const NOTE_CONTEXT_TTL_MS = 5 * 60 * 1000;
+
+    async function resolveNoteContext(noteId: string): Promise<NoteContext | null> {
+      const cached = noteContextCache.get(noteId);
+      if (cached && Date.now() - cached.ts < NOTE_CONTEXT_TTL_MS) return cached.context;
+
+      try {
+        const note = await joplin.data.get(['notes', noteId], { fields: ['id', 'parent_id'] }) as any;
+        if (!note || !note.id) return null;
+
+        // Walk the notebook chain from the note's own notebook up to the root.
+        const notebooks: { id: string; title: string }[] = [];
+        let parentId: string | undefined = note.parent_id;
+        const seen = new Set<string>();
+        while (parentId && !seen.has(parentId)) {
+          seen.add(parentId);
+          const folder = await joplin.data.get(['folders', parentId], { fields: ['id', 'parent_id', 'title'] }) as any;
+          if (!folder || !folder.id) break;
+          notebooks.push({ id: folder.id, title: folder.title || '' });
+          parentId = folder.parent_id;
+          if (notebooks.length >= 20) break;
+        }
+
+        const tagItems = await joplin.data.get(['notes', noteId, 'tags'], { fields: ['id', 'title'] }) as any[];
+        const tags = Array.isArray(tagItems)
+          ? tagItems.filter((t) => t && t.id).map((t) => ({ id: t.id, title: t.title || '' }))
+          : [];
+
+        const context: NoteContext = { notebooks, tags };
+        noteContextCache.set(noteId, { context, ts: Date.now() });
+        if (noteContextCache.size > NOTE_CONTEXT_CACHE_MAX) {
+          const oldest = noteContextCache.keys().next().value;
+          if (oldest !== undefined) noteContextCache.delete(oldest);
+        }
+        return context;
+      } catch (err) {
+        console.warn('[Theme Studio] Could not resolve note context for overrides:', err);
+        return null;
+      }
+    }
+
+    async function refreshEffectiveTheme(): Promise<void> {
+      try {
+        const vals = await readSettings();
+        const overrideText = `${vals['themeByNotebook'] || ''}\n${vals['themeByTag'] || ''}`;
+        if (!overrideText.trim()) {
+          if (vals['noteThemeEffective']) {
+            await joplin.settings.setValue('noteThemeEffective', '');
+          }
+          return;
+        }
+
+        const note = await joplin.workspace.selectedNote();
+        if (!note || !note.id) {
+          if (vals['noteThemeEffective']) {
+            await joplin.settings.setValue('noteThemeEffective', '');
+          }
+          return;
+        }
+
+        const context = await resolveNoteContext(note.id);
+        if (!context) return;
+
+        const notebookParse = parseOverrideLines(vals['themeByNotebook'] || '', 'notebook');
+        const tagParse = parseOverrideLines(vals['themeByTag'] || '', 'tag');
+        if (notebookParse.errors.length || tagParse.errors.length) {
+          console.warn('[Theme Studio] Invalid override settings:', [...notebookParse.errors, ...tagParse.errors].join('; '));
+        }
+
+        const resolution = resolveThemeOverride(
+          context,
+          { notebook: notebookParse.overrides, tag: tagParse.overrides },
+          vals['theme'] || 'atom-one-dark',
+        );
+
+        if (resolution.themeKey !== (vals['noteThemeEffective'] || '')) {
+          await joplin.settings.setValue('noteThemeEffective', resolution.themeKey);
+        }
+      } catch (err) {
+        console.warn('[Theme Studio] Could not refresh the active note theme:', err);
+      }
+    }
+
+    // Track the selected note so the effective theme follows note switches and
+    // note edits (a note's notebook/tags can change without a selection change).
+    try {
+      await joplin.workspace.onNoteSelectionChange(() => {
+        void refreshEffectiveTheme();
+      });
+      await joplin.workspace.onNoteChange(() => {
+        void refreshEffectiveTheme();
+      });
+    } catch (err) {
+      console.warn('[Theme Studio] Could not subscribe to workspace events:', err);
+    }
+
     // 1. Initial application shell styling on cold launch
     const initialConfig = await getAllCurrentValues();
     await syncDesktopChromeFile(initialConfig.options, initialConfig.shellEnabled);
+    await refreshEffectiveTheme();
 
     // Live preview panel ---------------------------------------------------
     // A view panel renders a standalone HTML document with the generated
@@ -514,7 +787,7 @@ joplin.plugins.register({
       if (!previewPanel) return;
       try {
         const cfg = await getAllCurrentValues();
-        await joplin.views.panels.setHtml(previewPanel, buildPreviewHtml(cfg.options));
+        await joplin.views.panels.setHtml(previewPanel, buildPreviewHtml(cfg.options, runtimeThemes));
       } catch (err) {
         console.warn('[Theme Studio] Could not refresh the live preview panel:', err);
       }
@@ -539,8 +812,27 @@ joplin.plugins.register({
 
     // 2. Reactively handle user setting changes
     await joplin.settings.onChange(async (event: { keys?: string[] }) => {
+      const changedKeys = event?.keys || [];
       const hasRelevantChange = !event?.keys || event.keys.some((k) => settingKeys.includes(k));
       if (!hasRelevantChange) return;
+
+      // Palette builder colours changed: regenerate the custom palette in the
+      // runtime registry so style builds and the selector reflect the new base.
+      if (changedKeys.some((k) => k.startsWith('customPalette'))) {
+        const builderVals = await joplin.settings.values(['customPaletteName', 'customPaletteBg', 'customPaletteFg', 'customPaletteAccent']);
+        const customPalette = buildCustomPalette(builderVals);
+        if (customPalette) {
+          runtimeThemes['custom'] = customPalette;
+        } else {
+          delete runtimeThemes['custom'];
+        }
+      }
+
+      // Override settings or the selected theme changed: re-resolve the
+      // active note's effective theme.
+      if (changedKeys.some((k) => k === 'theme' || k === 'themeByNotebook' || k === 'themeByTag')) {
+        await refreshEffectiveTheme();
+      }
 
       const currentConfig = await getAllCurrentValues();
       await syncDesktopChromeFile(currentConfig.options, currentConfig.shellEnabled);
@@ -548,7 +840,7 @@ joplin.plugins.register({
     });
 
     // 3. Commands (Command Palette, Keyboard Shortcuts screen)
-    const themeKeys = Object.keys(themes);
+    const themeKeys = Object.keys(runtimeThemes);
 
     const applyCurrentConfig = async (): Promise<void> => {
       const cfg = await getAllCurrentValues();
@@ -596,9 +888,59 @@ joplin.plugins.register({
       execute: async () => {
         const cfg = await getAllCurrentValues();
         try {
-          await joplin.clipboard.writeText(buildThemeCss(cfg.options, 'viewer'));
+          await joplin.clipboard.writeText(buildThemeCss(cfg.options, 'viewer', runtimeThemes));
         } catch (err) {
           console.warn('[Theme Studio] Could not copy the CSS to the clipboard:', err);
+        }
+      },
+    });
+
+    await joplin.commands.register({
+      name: 'themeStudio.exportPalettes',
+      label: 'Theme Studio: Export all palettes to clipboard',
+      iconName: 'fas fa-download',
+      execute: async () => {
+        try {
+          const payload = exportPalettes(Object.values(runtimeThemes));
+          await joplin.clipboard.writeText(payload);
+        } catch (err) {
+          console.warn('[Theme Studio] Could not export the palettes to the clipboard:', err);
+        }
+      },
+    });
+
+    await joplin.commands.register({
+      name: 'themeStudio.importPalettes',
+      label: 'Theme Studio: Import palettes from clipboard',
+      iconName: 'fas fa-upload',
+      execute: async () => {
+        try {
+          const json = await joplin.clipboard.readText();
+          if (!json || !json.trim()) {
+            console.warn('[Theme Studio] The clipboard is empty; nothing to import.');
+            return;
+          }
+          const { palettes, errors } = parsePaletteJson(json);
+          if (errors.length) {
+            console.warn('[Theme Studio] Could not import some palettes:', errors.join('; '));
+          }
+          if (!palettes.length) return;
+
+          // Merge by name: entries replace existing imported palettes with the
+          // same name and add new ones. The enum options update on next start.
+          const existing = await joplin.settings.value('customPalettes');
+          const current = parsePaletteJson(String(existing || '')).palettes;
+          const byName = new Map(current.map((p) => [p.name, p]));
+          for (const palette of palettes) byName.set(palette.name, palette);
+          await joplin.settings.setValue('customPalettes', JSON.stringify(Array.from(byName.values())));
+
+          const result = rebuildRuntimeThemes(JSON.stringify(Array.from(byName.values())));
+          if (result.errors.length) {
+            console.warn('[Theme Studio] Imported palettes failed validation:', result.errors.join('; '));
+          }
+          await refreshEffectiveTheme();
+        } catch (err) {
+          console.warn('[Theme Studio] Could not import the palettes from the clipboard:', err);
         }
       },
     });
@@ -640,9 +982,9 @@ joplin.plugins.register({
 
         return {
           version: config.version,
-          editorCss: config.editorEnabled ? buildEditorCss(config.options) : '',
-          viewerCss: buildThemeCss(config.options, 'tinymce'), // Rich Text iframe only; the viewer builds its own
-          panelCss: !isMobile && config.shellEnabled ? buildPanelCss(config.options) : '',
+          editorCss: config.editorEnabled ? buildEditorCss(config.options, runtimeThemes) : '',
+          viewerCss: buildThemeCss(config.options, 'tinymce', runtimeThemes), // Rich Text iframe only; the viewer builds its own
+          panelCss: !isMobile && config.shellEnabled ? buildPanelCss(config.options, runtimeThemes) : '',
           platform,
         };
       }
