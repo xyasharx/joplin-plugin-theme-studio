@@ -270,29 +270,119 @@ test('every theme has a scheme pairing entry', () => {
   }
 });
 
-test('all settings live on one page organized into categories', () => {
+test('settings are organized into native grouped sections', () => {
   const source = fs.readFileSync(path.resolve(__dirname, '..', 'src', 'index.ts'), 'utf8');
-  // Exactly one section is registered: the single plugin settings page.
-  const registerSections = [...source.matchAll(/registerSection\('([^']+)'/g)].map((m) => m[1]);
-  assert.deepEqual(registerSections, ['themeStudioSection']);
-  assert.match(source, /registerSection\('themeStudioSection', \{[\s\S]*description: sectionOverview/);
-  // Every setting belongs to the single section.
-  const sectionMatches = [...source.matchAll(/section: '(themeStudio[A-Za-z]*Section)'/g)].map((m) => m[1]);
-  assert.equal(sectionMatches.length, 38);
+  // One native section is registered per category via a single loop over the
+  // category declaration, in category order.
+  const sectionLoop = source.match(/for \(const category of THEME_STUDIO_CATEGORIES\) \{[\s\S]*?registerSection\(category\.section, \{/);
+  assert.ok(sectionLoop, 'a loop registers one section per category');
+  const categorySections = [...source.matchAll(/section: '(themeStudio[A-Za-z]*Section)'/g)].map((m) => m[1]);
+  const uniqueSections = [...new Set(categorySections)];
+  assert.deepEqual(uniqueSections, [
+    'themeStudioAppearanceSection',
+    'themeStudioTypographySection',
+    'themeStudioElementsSection',
+    'themeStudioExportSection',
+    'themeStudioAdvancedSection',
+  ]);
+  // Each section carries a label, icon and description.
+  const sectionRegistration = source.slice(source.indexOf('for (const category of THEME_STUDIO_CATEGORIES)'));
+  assert.match(sectionRegistration, /label: category\.title/, 'sections use the category label');
+  assert.match(sectionRegistration, /iconName: category\.iconName/, 'sections use the category icon');
+  assert.match(sectionRegistration, /description: category\.summary/, 'sections use the category summary');
+  // Every setting belongs to exactly one of the five category sections.
+  // (The theme selector is registered twice — built-in options first, then the
+  // full palette list — so there are 39 setting-level section lines.)
+  const sectionMatches = [...source.matchAll(/^\s+section: '(themeStudio[A-Za-z]*Section)'/gm)].map((m) => m[1]);
+  assert.equal(sectionMatches.length, 39);
+  const knownSections = new Set(uniqueSections);
   for (const section of sectionMatches) {
-    assert.equal(section, 'themeStudioSection', `setting ${section} lives on the single Theme Studio page`);
+    assert.ok(knownSections.has(section), `setting section ${section} is a registered category section`);
   }
-  // Every setting label is prefixed with its category title (branch hierarchy).
-  const labelMatches = [...source.matchAll(/label: settingLabel\('([^']+)', '([^']+)'\)/g)].map((m) => [m[1], m[2]]);
-  assert.equal(labelMatches.length, 38);
-  const knownCategories = ['appearance', 'typography', 'elements', 'export', 'advanced'];
-  for (const [category, label] of labelMatches) {
-    assert.ok(knownCategories.includes(category), `label category ${category} is declared`);
+  // Labels are plain (no "Category — Item" prefix): the section header carries
+  // the category context, and no settingLabel helper remains.
+  assert.ok(!source.includes('settingLabel'), 'no category-prefix label helper remains');
+  const labelMatches = [...source.matchAll(/label: '(?!Theme Studio:)([^']+)'/g)].map((m) => m[1]);
+  assert.equal(labelMatches.length, 39);
+  for (const label of labelMatches) {
     assert.ok(label.length > 0, 'setting label is non-empty');
   }
   // The five category titles are declared in the category structure.
   for (const title of ['Theme & Appearance', 'Typography', 'Code & Markdown Elements', 'Export', 'Advanced']) {
     assert.match(source, new RegExp(`title: '${title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`), `category ${title} is declared`);
+  }
+});
+
+test('runtime registration creates five grouped sections with the right settings', async () => {
+  // The plugin entry module and its `api` shim are cached from earlier
+  // tests; drop both so this test gets a fresh registration with its own
+  // mock API.
+  delete require.cache[require.resolve('../src/index.ts')];
+  delete require.cache[require.resolve('../api/index.ts')];
+
+  const registeredSections = [];
+  const settingsBySection = {};
+  let registration;
+  global.joplin = {
+    plugins: { register: (x) => { registration = x; }, dataDir: async () => '/tmp' },
+    versionInfo: async () => ({ platform: 'desktop' }),
+    settings: {
+      globalValues: async () => ['en'],
+      registerSection: async (name, section) => { registeredSections.push({ name, section }); },
+      registerSettings: async (settings) => {
+        for (const [key, item] of Object.entries(settings)) {
+          const section = String(item.section).replace(/^.*themeStudio/, 'themeStudio');
+          (settingsBySection[section] = settingsBySection[section] || []).push(key);
+        }
+      },
+      onChange: async () => {},
+      values: async (keys) => Object.fromEntries(keys.map((k) => [k, ''])),
+      value: async () => '',
+      setValue: async () => {},
+    },
+    commands: { register: async () => {} },
+    contentScripts: { register: async () => {}, onMessage: async () => {} },
+    views: { panels: { create: async () => 'panel', show: async () => {}, setHtml: async () => {} } },
+    workspace: { onNoteSelectionChange: async () => {}, onNoteChange: async () => {}, selectedNote: async () => null },
+    data: { get: async () => [] },
+    clipboard: { writeText: async () => {}, readText: async () => '' },
+  };
+  try {
+    require('../src/index.ts');
+    await registration.onStart();
+
+    assert.equal(registeredSections.length, 5, 'five sections are registered');
+    assert.deepEqual(
+      registeredSections.map((s) => s.section.label),
+      ['Theme & Appearance', 'Typography', 'Code & Markdown Elements', 'Export', 'Advanced'],
+      'sections are registered in category order',
+    );
+    for (const section of registeredSections) {
+      assert.ok(section.section.iconName.startsWith('fas fa-'), `section ${section.name} has an icon`);
+      assert.ok(section.section.description.length > 0, `section ${section.name} has a description`);
+    }
+    assert.deepEqual(
+      Object.keys(settingsBySection).sort(),
+      [
+        'themeStudioAdvancedSection',
+        'themeStudioAppearanceSection',
+        'themeStudioElementsSection',
+        'themeStudioExportSection',
+        'themeStudioTypographySection',
+      ],
+      'every setting lands in one of the five sections',
+    );
+    // The theme selector leads the Appearance section (registered first, then
+    // re-registered with the full palette option list).
+    assert.equal(settingsBySection['themeStudioAppearanceSection'][0], 'theme', 'Color Theme is the first Appearance setting');
+    assert.equal(settingsBySection['themeStudioTypographySection'].length, 12);
+    assert.equal(settingsBySection['themeStudioElementsSection'].length, 8);
+    assert.equal(settingsBySection['themeStudioExportSection'].length, 4);
+    assert.equal(settingsBySection['themeStudioAdvancedSection'].length, 6);
+    const total = Object.values(settingsBySection).reduce((sum, keys) => sum + keys.length, 0);
+    assert.equal(total, 39, 'all setting registrations are accounted for');
+  } finally {
+    delete global.joplin;
   }
 });
 
