@@ -270,17 +270,28 @@ test('every theme has a scheme pairing entry', () => {
   }
 });
 
-test('settings are registered under categorized sections', () => {
+test('all settings live on one page organized into categories', () => {
   const source = fs.readFileSync(path.resolve(__dirname, '..', 'src', 'index.ts'), 'utf8');
-  const sectionIds = ['themeStudioAppearanceSection', 'themeStudioTypographySection', 'themeStudioElementsSection', 'themeStudioExportSection', 'themeStudioAdvancedSection'];
-  for (const id of sectionIds) {
-    assert.match(source, new RegExp(`registerSection\\('${id}'`), `section ${id} is registered`);
-  }
-  // Every registered setting must belong to one of the categorized sections.
-  const sectionMatches = [...source.matchAll(/section: '(themeStudio[A-Za-z]+Section)'/g)].map((m) => m[1]);
+  // Exactly one section is registered: the single plugin settings page.
+  const registerSections = [...source.matchAll(/registerSection\('([^']+)'/g)].map((m) => m[1]);
+  assert.deepEqual(registerSections, ['themeStudioSection']);
+  assert.match(source, /registerSection\('themeStudioSection', \{[\s\S]*description: sectionOverview/);
+  // Every setting belongs to the single section.
+  const sectionMatches = [...source.matchAll(/section: '(themeStudio[A-Za-z]*Section)'/g)].map((m) => m[1]);
   assert.equal(sectionMatches.length, 25);
   for (const section of sectionMatches) {
-    assert.ok(sectionIds.includes(section), `setting uses categorized section ${section}`);
+    assert.equal(section, 'themeStudioSection', `setting ${section} lives on the single Theme Studio page`);
   }
-  assert.doesNotMatch(source, /section: 'themeStudioSection'/);
+  // Every setting label is prefixed with its category title (branch hierarchy).
+  const labelMatches = [...source.matchAll(/label: settingLabel\('([^']+)', '([^']+)'\)/g)].map((m) => [m[1], m[2]]);
+  assert.equal(labelMatches.length, 25);
+  const knownCategories = ['appearance', 'typography', 'elements', 'export', 'advanced'];
+  for (const [category, label] of labelMatches) {
+    assert.ok(knownCategories.includes(category), `label category ${category} is declared`);
+    assert.ok(label.length > 0, 'setting label is non-empty');
+  }
+  // The five category titles are declared in the category structure.
+  for (const title of ['Theme & Appearance', 'Typography', 'Code & Markdown Elements', 'Export', 'Advanced']) {
+    assert.match(source, new RegExp(`title: '${title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`), `category ${title} is declared`);
+  }
 });
