@@ -143,6 +143,42 @@ Access the settings panel under **Tools > Options > Theme Studio** (on Mobile: *
 | **Custom Heading Sizes** | Comma-separated sizes string | `1.75em, 1.42em, ...` | Custom sizes for H1 to H6 (e.g., `28px, 24px, 20px, ...`) |
 | **Reading Width (Focus Mode)** | `Full Width`, `Comfortable (920px)`, `Compact (760px)` | `Full Width` | Constrains note container width on wide monitors |
 | **PDF Export Appearance** | `Exact Match`, `Paper Friendly` | `Exact Match` | Controls background retention in exported PDFs |
+| **Custom CSS for Notes** | CSS string (single line recommended) | *(empty)* | Extra CSS appended after the theme stylesheet (notes and Rich Text editor) |
+| **Color Scheme Mode** | `Use Selected Theme`, `Follow System (Light / Dark)` | `Use Selected Theme` | Follows the OS light/dark preference; themes without a matching counterpart keep their own look |
+| **Style Blockquotes** | `true` / `false` | `true` | Apply theme border, background and padding to blockquotes |
+| **Style Tables** | `true` / `false` | `true` | Apply theme borders, stripes and cell padding to tables |
+| **Style Images** | `true` / `false` | `true` | Apply theme shadow, border-radius and max-height to images |
+| **Style Headings** | `true` / `false` | `true` | Apply theme colours and heading accent borders |
+| **Style Links** | `true` / `false` | `true` | Apply theme link colour and underline |
+| **Style Code Blocks** | `true` / `false` | `true` | Apply theme backgrounds and borders to code blocks and inline code |
+
+---
+
+## 🌗 Automatic Light / Dark Switching
+
+When **Color Scheme Mode** is set to `Follow System (Light / Dark)`, the plugin
+emits `@media (prefers-color-scheme: dark)` and `@media (prefers-color-scheme:
+light)` blocks that swap in a matched light/dark counterpart palette at runtime,
+so the note, editor and application shell follow the OS appearance automatically —
+no restart or note re-render needed.
+
+Four theme families ship as true light/dark pairs and switch seamlessly:
+**Atom One**, **Everforest**, **Catppuccin** and **Gruvbox**. The remaining
+themes (Tokyo Night, Tokyo Night Storm, Nord and Dracula) have no matching
+counterpart, so they keep their own look in both schemes rather than silently
+changing palette. The native `color-scheme` is set alongside each block so
+scrollbars, form controls and other UA chrome follow too.
+
+---
+
+## 👁️ Live Preview Panel
+
+The **Theme Studio: Open live preview** command (Command Palette or Keyboard
+Shortcuts) opens a floating panel that renders a sample note using the current
+theme, fonts, direction and scheme settings. Edit any setting under **Tools >
+Options > Theme Studio** and the preview updates automatically, so you can see
+the effect of every change — including per-element style toggles and automatic
+light/dark switching — before applying it to your notes.
 
 ---
 

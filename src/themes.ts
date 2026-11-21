@@ -414,3 +414,24 @@ export const themes: Record<string, ThemePalette> = {
     },
   },
 };
+
+/**
+ * Light/dark pairing for the system color-scheme mode. A theme with a natural
+ * counterpart switches to it when the OS preference differs; a theme without
+ * a counterpart (Tokyo Night, Nord, Dracula) keeps its own look in both
+ * schemes, so `system` mode never silently changes an unrelated palette.
+ */
+export const schemePairs: Record<string, { dark: string; light: string }> = {
+  'atom-one-dark':     { dark: 'atom-one-dark',     light: 'atom-one-light' },
+  'atom-one-light':    { dark: 'atom-one-dark',     light: 'atom-one-light' },
+  'tokyo-night':       { dark: 'tokyo-night',       light: 'tokyo-night' },
+  'tokyo-night-storm': { dark: 'tokyo-night-storm', light: 'tokyo-night-storm' },
+  'everforest-dark':   { dark: 'everforest-dark',   light: 'everforest-light' },
+  'everforest-light':  { dark: 'everforest-dark',   light: 'everforest-light' },
+  'catppuccin-mocha':  { dark: 'catppuccin-mocha',  light: 'catppuccin-latte' },
+  'catppuccin-latte':  { dark: 'catppuccin-mocha',  light: 'catppuccin-latte' },
+  'nord':              { dark: 'nord',              light: 'nord' },
+  'dracula':           { dark: 'dracula',           light: 'dracula' },
+  'gruvbox-dark':      { dark: 'gruvbox-dark',      light: 'gruvbox-light' },
+  'gruvbox-light':     { dark: 'gruvbox-dark',      light: 'gruvbox-light' },
+};

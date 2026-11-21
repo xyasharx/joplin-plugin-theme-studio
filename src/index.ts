@@ -2,12 +2,15 @@ import joplin from 'api';
 import { ContentScriptType, SettingItemType } from 'api/types';
 import { buildEditorCss, buildThemeCss, buildChromeCss, buildPanelCss, StyleOptions } from './styles';
 import { themes } from './themes';
+import { buildPreviewHtml } from './preview';
 
 joplin.plugins.register({
   onStart: async function () {
     let defaultDirection = 'ltr';
     let defaultFontPreset = 'inter';
     let lastWrittenChromeCss: string | null = null;
+    let previewPanel: any = null;
+    let previewRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 
     // Platform detection: the application-shell CSS and iframe handling are
     // desktop-only. Older API versions do not expose `platform`; assume desktop.
@@ -269,6 +272,67 @@ joplin.plugins.register({
         label: 'Custom CSS for notes',
         description: 'Extra CSS appended after the theme stylesheet (notes and Rich Text editor). Keep it on one line, e.g. "#rendered-md h1 { letter-spacing: -0.5px; }".',
       },
+      'colorSchemeMode': {
+        value: 'theme',
+        type: SettingItemType.String,
+        section: 'themeStudioSection',
+        isEnum: true,
+        public: true,
+        label: 'Color Scheme Mode',
+        description: 'Follow the operating system light/dark preference. Themes without a matching light/dark counterpart keep their own look in both schemes.',
+        options: {
+          'theme': 'Use Selected Theme',
+          'system': 'Follow System (Light / Dark)',
+        },
+      },
+      'styleBlockquotes': {
+        value: true,
+        type: SettingItemType.Bool,
+        section: 'themeStudioSection',
+        public: true,
+        label: 'Style Blockquotes',
+        description: 'Apply the theme border, background and padding to blockquotes. Disable to render them as plain text.',
+      },
+      'styleTables': {
+        value: true,
+        type: SettingItemType.Bool,
+        section: 'themeStudioSection',
+        public: true,
+        label: 'Style Tables',
+        description: 'Apply theme borders, stripes and cell padding to tables. Disable to render them without any table styling.',
+      },
+      'styleImages': {
+        value: true,
+        type: SettingItemType.Bool,
+        section: 'themeStudioSection',
+        public: true,
+        label: 'Style Images',
+        description: 'Apply the theme shadow, border-radius and max-height to images. Disable to render them without decoration.',
+      },
+      'styleHeadings': {
+        value: true,
+        type: SettingItemType.Bool,
+        section: 'themeStudioSection',
+        public: true,
+        label: 'Style Headings',
+        description: 'Apply theme colours and the heading accent borders. Disable to render headings in the body colour without borders.',
+      },
+      'styleLinks': {
+        value: true,
+        type: SettingItemType.Bool,
+        section: 'themeStudioSection',
+        public: true,
+        label: 'Style Links',
+        description: 'Apply the theme link colour and underline. Disable to render links like plain body text.',
+      },
+      'styleCodeBlocks': {
+        value: true,
+        type: SettingItemType.Bool,
+        section: 'themeStudioSection',
+        public: true,
+        label: 'Style Code Blocks',
+        description: 'Apply theme backgrounds and borders to code blocks and inline code. Disable to render them without backgrounds.',
+      },
     });
 
     const settingKeys = [
@@ -290,6 +354,13 @@ joplin.plugins.register({
       'pdfPageMargin',
       'customPdfMargin',
       'customCss',
+      'colorSchemeMode',
+      'styleBlockquotes',
+      'styleTables',
+      'styleImages',
+      'styleHeadings',
+      'styleLinks',
+      'styleCodeBlocks',
     ];
 
     /** Reads all plugin settings in one round-trip (or via `value()` on APIs that lack `values()`). */
@@ -325,6 +396,13 @@ joplin.plugins.register({
         pdfPageMargin: vals['pdfPageMargin'] || 'standard',
         customPdfMargin: vals['customPdfMargin'] || '15mm 18mm',
         customCss: vals['customCss'] || '',
+        colorSchemeMode: vals['colorSchemeMode'] || 'theme',
+        styleBlockquotes: vals['styleBlockquotes'] ?? true,
+        styleTables: vals['styleTables'] ?? true,
+        styleImages: vals['styleImages'] ?? true,
+        styleHeadings: vals['styleHeadings'] ?? true,
+        styleLinks: vals['styleLinks'] ?? true,
+        styleCodeBlocks: vals['styleCodeBlocks'] ?? true,
       };
 
       return {
@@ -386,6 +464,39 @@ joplin.plugins.register({
     const initialConfig = await getAllCurrentValues();
     await syncDesktopChromeFile(initialConfig.options, initialConfig.shellEnabled);
 
+    // Live preview panel ---------------------------------------------------
+    // A view panel renders a standalone HTML document with the generated
+    // viewer stylesheet and a sample note, so settings changes are visible
+    // without opening a note. The panel is created once and kept hidden until
+    // the user opens it via the command; refreshes are debounced because
+    // settings changes fire per key.
+    async function refreshPreview(): Promise<void> {
+      if (!previewPanel) return;
+      try {
+        const cfg = await getAllCurrentValues();
+        await joplin.views.panels.setHtml(previewPanel, buildPreviewHtml(cfg.options));
+      } catch (err) {
+        console.warn('[Theme Studio] Could not refresh the live preview panel:', err);
+      }
+    }
+
+    function schedulePreviewRefresh(): void {
+      if (previewRefreshTimer) clearTimeout(previewRefreshTimer);
+      previewRefreshTimer = setTimeout(() => {
+        previewRefreshTimer = null;
+        void refreshPreview();
+      }, 250);
+    }
+
+    try {
+      previewPanel = await joplin.views.panels.create('themeStudioPreview');
+      await joplin.views.panels.show(previewPanel, false);
+      await refreshPreview();
+    } catch (err) {
+      console.warn('[Theme Studio] Could not create the live preview panel:', err);
+      previewPanel = null;
+    }
+
     // 2. Reactively handle user setting changes
     await joplin.settings.onChange(async (event: { keys?: string[] }) => {
       const hasRelevantChange = !event?.keys || event.keys.some((k) => settingKeys.includes(k));
@@ -393,6 +504,7 @@ joplin.plugins.register({
 
       const currentConfig = await getAllCurrentValues();
       await syncDesktopChromeFile(currentConfig.options, currentConfig.shellEnabled);
+      if (previewPanel) schedulePreviewRefresh();
     });
 
     // 3. Commands (Command Palette, Keyboard Shortcuts screen)
@@ -448,6 +560,24 @@ joplin.plugins.register({
         } catch (err) {
           console.warn('[Theme Studio] Could not copy the CSS to the clipboard:', err);
         }
+      },
+    });
+
+    await joplin.commands.register({
+      name: 'themeStudio.openPreview',
+      label: 'Theme Studio: Open live preview',
+      iconName: 'fas fa-eye',
+      execute: async () => {
+        if (!previewPanel) {
+          try {
+            previewPanel = await joplin.views.panels.create('themeStudioPreview');
+          } catch (err) {
+            console.warn('[Theme Studio] Could not create the live preview panel:', err);
+            return;
+          }
+        }
+        await refreshPreview();
+        await joplin.views.panels.show(previewPanel, true);
       },
     });
 

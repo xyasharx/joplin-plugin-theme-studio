@@ -11,6 +11,7 @@ require.extensions['.ts'] = (module, filename) => {
 };
 const { buildChromeCss, buildEditorCss, buildThemeCss } = require('../src/styles.ts');
 const { themes } = require('../src/themes.ts');
+const { buildPreviewHtml } = require('../src/preview.ts');
 const options = { themeKey: 'atom-one-dark', direction: 'ltr', fontPreset: 'system', fontFamily: '', codeFontPreset: 'system-mono', codeFont: '', fontSize: '16px', lineHeight: '1.75', contentMaxWidth: 'full', pdfExportStyle: 'exact' };
 
 test('whiteboard variables follow every palette and do not overwrite chosen card colours', () => {
@@ -92,6 +93,95 @@ test('generated CSS avoids deprecated word-break and overflow-scrolling values',
     assert.doesNotMatch(css, /word-break:\s*break-word/);
     assert.doesNotMatch(css, /-webkit-overflow-scrolling/);
   }
+});
+
+test('system color scheme emits dark and light media query blocks', () => {
+  const css = buildThemeCss({ ...options, colorSchemeMode: 'system' }, 'viewer');
+  // The base :root keeps the selected theme as fallback and declares the
+  // native color-scheme so scrollbars/form controls follow.
+  assert.match(css, /:root\{[^}]*--od-bg: #282c34/);
+  assert.match(css, /:root\{[^}]*color-scheme: dark/);
+  // Each scheme block swaps in the paired palette's variables.
+  assert.match(css, /@media \(prefers-color-scheme: dark\)\{:root\{[^}]*--od-bg: #282c34/);
+  assert.match(css, /@media \(prefers-color-scheme: light\)\{:root\{[^}]*--od-bg: #fafafa/);
+  // Token colours are recomputed per scheme so code stays readable.
+  assert.match(css, /@media \(prefers-color-scheme: dark\)\{:root\{[^}]*--od-tok-keyword/);
+  assert.match(css, /@media \(prefers-color-scheme: light\)\{:root\{[^}]*--od-tok-keyword/);
+});
+
+test('system color scheme falls back to the theme when no pair exists', () => {
+  // Nord has no light counterpart: the base :root is emitted but no media
+  // query block is added, so the palette never silently changes.
+  const css = buildThemeCss({ ...options, themeKey: 'nord', colorSchemeMode: 'system' }, 'viewer');
+  assert.match(css, /:root\{[^}]*--od-bg: #2e3440/);
+  assert.doesNotMatch(css, /prefers-color-scheme/);
+});
+
+test('theme color scheme mode emits no media query blocks', () => {
+  const css = buildThemeCss({ ...options, colorSchemeMode: 'theme' }, 'viewer');
+  assert.doesNotMatch(css, /prefers-color-scheme/);
+  assert.match(css, /:root\{[^}]*--od-bg: #282c34/);
+});
+
+test('element toggles append neutralizers only when disabled', () => {
+  // Defaults: every element keeps its styling, so no neutralizer rules.
+  const on = buildThemeCss(options, 'viewer');
+  assert.doesNotMatch(on, /#rendered-md blockquote\{border: 0 !important/);
+
+  const off = buildThemeCss({
+    ...options,
+    styleBlockquotes: false,
+    styleTables: false,
+    styleImages: false,
+    styleHeadings: false,
+    styleLinks: false,
+    styleCodeBlocks: false,
+  }, 'viewer');
+  assert.match(off, /#rendered-md blockquote\{border: 0 !important;background-color: transparent !important\}/);
+  assert.match(off, /#rendered-md table,#rendered-md th,#rendered-md td\{border: 0 !important\}/);
+  assert.match(off, /#rendered-md tr:nth-child\(even\),#rendered-md tr:nth-child\(odd\)\{background-color: transparent !important\}/);
+  assert.match(off, /#rendered-md img\{box-shadow: none !important;border-radius: 0 !important;max-height: none !important\}/);
+  assert.match(off, /#rendered-md :is\(h1,h2,h3,h4,h5,h6\)\{color: var\(--od-fg\) !important\}/);
+  assert.match(off, /#rendered-md a,#rendered-md a:hover,#rendered-md a\[href\^=":\/"\],#rendered-md a\[href\^=":\/"\]:hover\{color: var\(--od-fg\) !important;text-decoration: none !important\}/);
+  assert.match(off, /#rendered-md pre:not\(\.mermaid\):not\(\.joplin-source\),#rendered-md code\{background-color: transparent !important;border: 0 !important\}/);
+});
+
+test('element toggles are scoped to the tinymce target as well', () => {
+  const css = buildThemeCss({ ...options, styleTables: false }, 'tinymce');
+  assert.match(css, /body#tinymce table,body#tinymce th,body#tinymce td\{border: 0 !important\}/);
+});
+
+test('user custom CSS wins over element neutralizers', () => {
+  const css = buildThemeCss({
+    ...options,
+    styleBlockquotes: false,
+    customCss: '#rendered-md blockquote { border-left: 3px solid red !important; }',
+  }, 'viewer');
+  const idxNeutral = css.indexOf('#rendered-md blockquote{border: 0 !important');
+  const idxCustom = css.indexOf('User custom CSS');
+  assert.ok(idxNeutral > -1 && idxCustom > -1);
+  assert.ok(idxCustom > idxNeutral, 'custom CSS must come after neutralizers');
+});
+
+test('live preview embeds the theme stylesheet and a sample document', () => {
+  const html = buildPreviewHtml(options);
+  assert.match(html, /<!DOCTYPE html>/);
+  assert.match(html, /<div id="rendered-md">/);
+  // The generated viewer stylesheet is embedded verbatim.
+  assert.match(html, /--od-bg: #282c34/);
+  assert.match(html, /Theme Studio Preview/);
+  assert.match(html, /<table>/);
+  assert.match(html, /<blockquote>/);
+  assert.match(html, /<pre><code>/);
+  // Header reflects the active configuration.
+  assert.match(html, /Atom One Dark · LTR · Theme/);
+});
+
+test('live preview header reflects system scheme and direction', () => {
+  const rtl = buildPreviewHtml({ ...options, direction: 'rtl', colorSchemeMode: 'system' });
+  assert.match(rtl, /Atom One Dark · RTL · System/);
+  const auto = buildPreviewHtml({ ...options, direction: 'auto' });
+  assert.match(auto, /Atom One Dark · Auto BiDi · Theme/);
 });
 
 test('viewer cache distinguishes settings containing delimiter characters', () => {
