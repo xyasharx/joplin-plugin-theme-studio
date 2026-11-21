@@ -69,6 +69,7 @@ function getMemoizedViewerCss(pluginOptions: any): string {
   const textAlign = readSetting(pluginOptions, 'textAlign', 'left');
   const hyphenation = readSetting(pluginOptions, 'hyphenation', 'false');
   const fontLigatures = readSetting(pluginOptions, 'fontLigatures', 'false');
+  const mobileDensity = readSetting(pluginOptions, 'mobileDensity', 'default');
   const customPalettesJson = readSetting(pluginOptions, 'customPalettes', '');
   const customPaletteBg = readSetting(pluginOptions, 'customPaletteBg', '');
   const customPaletteFg = readSetting(pluginOptions, 'customPaletteFg', '');
@@ -78,7 +79,7 @@ function getMemoizedViewerCss(pluginOptions: any): string {
   const cacheKey = JSON.stringify([
     themeKey, noteThemeEffective, direction, fontPreset, fontSize, lineHeight, fontFamily, codeFontPreset, codeFont,
     contentMaxWidth, pdfExportStyle, pdfPageSize, pdfPageMargin, customPdfMargin, headingSizePreset, customHeadingSizes, customCss,
-    letterSpacing, textAlign, hyphenation, fontLigatures, customPalettesJson, customPaletteBg, customPaletteFg, customPaletteAccent,
+    letterSpacing, textAlign, hyphenation, fontLigatures, mobileDensity, customPalettesJson, customPaletteBg, customPaletteFg, customPaletteAccent,
   ]);
 
   if (cacheKey !== lastViewerCacheKey || !cachedViewerCss) {
@@ -105,6 +106,7 @@ function getMemoizedViewerCss(pluginOptions: any): string {
       textAlign,
       hyphenation: hyphenation === 'true',
       fontLigatures: fontLigatures === 'true',
+      mobileDensity,
     };
     cachedViewerCss = buildThemeCss(options, 'viewer', buildViewerPalettes(pluginOptions));
   }

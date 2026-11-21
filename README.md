@@ -19,6 +19,8 @@ Theme Studio is a modular palette and typography engine for Joplin. It applies u
 - **Custom Palette Builder:** Pick three base colours (background, foreground, accent) and the plugin derives a complete palette automatically — headings, surfaces, code, tables, scrollbars, and syntax tokens.
 - **Palette Import & Export:** Export every palette (built-in and imported) as shareable JSON, and import palettes back from the clipboard. Imported palettes join the theme selector and support automatic light/dark switching when they declare a pairing.
 - **Per-Notebook / Per-Tag Theme Overrides:** Pin a different palette to specific notebooks (by ID or title) or tags, so e.g. work notes use one palette while personal notes use another. The effective palette is resolved automatically from the active note.
+- **Command-Palette Theme Picker:** One command per palette (`Theme Studio: Use <Theme Name>`) lets keyboard-only users jump straight to any theme from the Command Palette — no cycling required.
+- **Mobile Density Presets:** A Compact / Default / Large toggle scales the note font size on screens under 768px, improving small-screen readability without touching desktop rendering.
 - **Third-Party Plugin Panel Synchronization:** Propagates theme variables, background colors, and font styles into webview panels created by third-party plugins (such as *Outline* and *Note Tabs*).
 - **Configurable Heading Typography Scales:** Choose between balanced, large editorial, compact dense, or custom comma-separated typographic scales for H1 through H6 headings.
 - **Smart BiDi Locale Detection:** Queries Joplin's interface language on launch. Automatically defaults to LTR with Inter for global locales, and RTL with Vazirmatn for Persian, Arabic, and Hebrew interfaces.
@@ -171,6 +173,7 @@ All settings live on a single plugin page under **Tools > Options > Theme Studio
 | **Paragraph Alignment** | `Left`, `Justify` | `Left` | Justifies body paragraphs for long-form reading |
 | **Hyphenation** | `true` / `false` | `false` | Enables `hyphens: auto` for justified text |
 | **Font Ligatures** | `true` / `false` | `false` | Enables common ligatures and `font-feature-settings` |
+| **Mobile Density** | `Compact`, `Default`, `Large` | `Default` | Font size scale applied on screens under 768px (Compact 0.85×, Default 1×, Large 1.15×) |
 | **Heading Sizes Preset** | `Balanced`, `Large`, `Compact`, `Custom` | `Balanced` | Typographic scale applied to H1 through H6 headings |
 | **Custom Heading Sizes** | Comma-separated sizes string | `1.75em, 1.42em, ...` | Custom sizes for H1 to H6 (e.g., `28px, 24px, 20px, ...`) |
 | **Reading Width (Focus Mode)** | `Full Width`, `Comfortable (920px)`, `Compact (760px)` | `Full Width` | Constrains note container width on wide monitors |
@@ -227,6 +230,15 @@ base colours: the heading scale is derived from the accent with modest hue
 rotations, surfaces and code backgrounds from luminance mixes, and syntax
 tokens from the derived contrast palette. A valid background, foreground and
 accent are required before the palette is added to the selector.
+
+### Theme Picker Commands
+
+Beyond **Theme Studio: Next colour theme** (which cycles through the palettes
+one at a time), the plugin registers one command per palette —
+**Theme Studio: Use <Theme Name>** — for every built-in, custom and imported
+palette. Each command appears directly in the Command Palette and Keyboard
+Shortcuts screen, so keyboard-only users can jump straight to a specific
+theme by name without cycling.
 
 ---
 

@@ -42,6 +42,9 @@ export interface StyleOptions {
   noteThemeEffective?: string;
   themeByNotebook?: string;
   themeByTag?: string;
+  // Mobile density preset (P3): 'compact' | 'default' | 'large' scales the
+  // font size and heading scale inside the mobile media query.
+  mobileDensity?: string;
 }
 
 /**
@@ -1563,6 +1566,15 @@ ${S} :is(th, td):not([style*="text-align"]) { text-align: left !important; }
 
   const PRE = `${S} pre:not(.mermaid):not(.joplin-source)`;
 
+  // Mobile density preset (P3): a multiplicative font scale applied inside
+  // the mobile media query. Em/relative sizes cascade from the scaled base.
+  const MOBILE_DENSITY_SCALES: Record<string, number> = {
+    compact: 0.85,
+    default: 1,
+    large: 1.15,
+  };
+  const mobileDensityScale = MOBILE_DENSITY_SCALES[options.mobileDensity || 'default'] ?? 1;
+
   // Typography micro-tuning (P2): letter spacing, paragraph justification,
   // hyphenation and font ligatures. Each is opt-in and only emitted when the
   // corresponding setting is active, so the default stylesheet is unchanged.
@@ -1986,6 +1998,10 @@ ${S} .footnotes {
 /* Mobile Responsiveness (< 768px) – only the values that actually differ from the base rules */
 @media screen and (max-width: 768px) {
   ${isViewer && contentWidthCss ? `#rendered-md { max-width: 100% !important; } /* Reading Width is a desktop feature */` : ''}
+  /* Mobile density preset (P3): scales the base font size on small screens.
+     Headings, code blocks and tables use em/relative units, so they cascade
+     from this single scale factor. */
+  body, ${S} { font-size: calc(${safeLength(options.fontSize, '16px')} * ${mobileDensityScale}) !important; }
   ${S} h1 { font-size: calc(${headingSizes.h1} * 0.9) !important; margin: 20px 0 12px 0 !important; }
   ${S} h2 { font-size: calc(${headingSizes.h2} * 0.92) !important; margin: 18px 0 10px 0 !important; }
   ${S} h3 { margin: 16px 0 8px 0 !important; }
